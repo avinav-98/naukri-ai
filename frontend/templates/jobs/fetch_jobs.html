@@ -1,0 +1,43 @@
+{% extends "dashboard_base.html" %}
+
+{% block content %}
+
+<h2>Fetch Jobs</h2>
+
+<button id="linkPortalBtn" type="button">Link Naukri Profile</button>
+
+<form id="fetchForm" style="margin-top:12px">
+  <label>Resume (.txt)</label><br>
+  <input type="file" name="resume_file" accept=".txt,text/plain" required><br><br>
+
+  <label>Pages to Scrape (1-20)</label><br>
+  <input type="number" name="pages" min="1" max="20" value="5"><br><br>
+
+  <label>Auto Apply Limit (1-20)</label><br>
+  <input type="number" name="auto_apply_limit" min="1" max="20" value="10"><br><br>
+
+  <button id="runBtn" type="button">Run Pipeline</button>
+</form>
+
+<p id="status"></p>
+
+<h3>Recent Runs</h3>
+<table id="runsTable">
+  <thead>
+    <tr>
+      <th>Run ID</th>
+      <th>Status</th>
+      <th>Pages</th>
+      <th>Apply Limit</th>
+      <th>Fetched</th>
+      <th>Shortlisted</th>
+      <th>Applied</th>
+      <th>Message</th>
+    </tr>
+  </thead>
+  <tbody></tbody>
+</table>
+
+<script src="/static/js/fetch_jobs.js"></script>
+
+{% endblock %}

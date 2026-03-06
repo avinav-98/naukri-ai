@@ -1,0 +1,21 @@
+{% extends "dashboard_base.html" %}
+
+{% block content %}
+
+<h1>Jobs Directory</h1>
+
+<table>
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>Company</th>
+      <th>Location</th>
+      <th>Open</th>
+    </tr>
+  </thead>
+  <tbody id="jobs_table"></tbody>
+</table>
+
+<script src="/static/js/jobs_directory.js"></script>
+
+{% endblock %}

@@ -1,0 +1,28 @@
+{% extends "dashboard_base.html" %}
+
+{% block content %}
+
+<h1>Dashboard</h1>
+
+<div style="display:flex;gap:30px;margin-top:30px">
+
+<div style="background:white;padding:20px;border-radius:6px;width:200px">
+<h3>Jobs Directory</h3>
+<h2 id="jobs_directory">0</h2>
+</div>
+
+<div style="background:white;padding:20px;border-radius:6px;width:200px">
+<h3>Relevant Jobs</h3>
+<h2 id="relevant_jobs">0</h2>
+</div>
+
+<div style="background:white;padding:20px;border-radius:6px;width:200px">
+<h3>Applied Jobs</h3>
+<h2 id="applied_jobs">0</h2>
+</div>
+
+</div>
+
+<script src="/static/js/dashboard.js"></script>
+
+{% endblock %}

@@ -1,0 +1,23 @@
+{% extends "dashboard_base.html" %}
+
+{% block content %}
+
+<h2>User Profile</h2>
+
+<p id="userName"></p>
+
+<button onclick="logout()">Logout</button>
+
+<script>
+
+function logout(){
+
+document.cookie="session=; Max-Age=0"
+
+window.location="/"
+
+}
+
+</script>
+
+{% endblock %}

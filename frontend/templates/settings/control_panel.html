@@ -1,0 +1,33 @@
+{% extends "dashboard_base.html" %}
+
+{% block content %}
+
+<h1>Control Panel</h1>
+
+<form id="settingsForm">
+
+<label>Job Role</label>
+<input type="text" id="job_role">
+
+<label>Location</label>
+<input type="text" id="location">
+
+<label>Experience</label>
+<input type="text" id="experience">
+
+<label>Salary</label>
+<input type="text" id="salary">
+
+<label>Pages to Scrape</label>
+<input type="number" id="pages">
+
+<label>Auto Apply Limit</label>
+<input type="number" id="limit">
+
+<button type="submit">Save</button>
+
+</form>
+
+<script src="/static/js/settings.js"></script>
+
+{% endblock %}

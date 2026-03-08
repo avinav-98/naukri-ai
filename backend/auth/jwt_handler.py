@@ -9,9 +9,10 @@ JWT_ALGO = "HS256"
 JWT_EXP_DAYS = int(os.getenv("JWT_EXP_DAYS", "7"))
 
 
-def create_token(user_id: int) -> str:
+def create_token(user_id: int, role: str = "user") -> str:
     payload = {
         "user_id": user_id,
+        "role": role,
         "exp": datetime.datetime.utcnow() + datetime.timedelta(days=JWT_EXP_DAYS),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGO)

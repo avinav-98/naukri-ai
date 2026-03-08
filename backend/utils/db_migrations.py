@@ -25,6 +25,9 @@ def ensure_users_schema(conn: sqlite3.Connection):
             password_hash TEXT,
             naukri_id TEXT,
             naukri_password_enc TEXT,
+            role TEXT DEFAULT 'user',
+            account_status TEXT DEFAULT 'active',
+            last_login TIMESTAMP,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
@@ -34,6 +37,9 @@ def ensure_users_schema(conn: sqlite3.Connection):
     _ensure_column(conn, "users", "password_hash TEXT")
     _ensure_column(conn, "users", "naukri_id TEXT")
     _ensure_column(conn, "users", "naukri_password_enc TEXT")
+    _ensure_column(conn, "users", "role TEXT DEFAULT 'user'")
+    _ensure_column(conn, "users", "account_status TEXT DEFAULT 'active'")
+    _ensure_column(conn, "users", "last_login TIMESTAMP")
 
     # Legacy column backfill
     cols = _table_columns(conn, "users")
@@ -58,7 +64,92 @@ def ensure_users_schema(conn: sqlite3.Connection):
             SET naukri_password_enc = COALESCE(naukri_password_enc, naukri_password)
             """
         )
+    cursor.execute("UPDATE users SET role = 'user' WHERE role IS NULL OR TRIM(role) = ''")
+    cursor.execute("UPDATE users SET account_status = 'active' WHERE account_status IS NULL OR TRIM(account_status) = ''")
 
+    conn.commit()
+
+
+def ensure_password_reset_schema(conn: sqlite3.Connection):
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS password_resets (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            token TEXT NOT NULL UNIQUE,
+            expires_at TIMESTAMP NOT NULL,
+            used INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_password_resets_user
+        ON password_resets(user_id)
+        """
+    )
+    conn.commit()
+
+
+def ensure_user_ui_preferences_schema(conn: sqlite3.Connection):
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_ui_preferences (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL UNIQUE,
+            theme_mode TEXT DEFAULT 'system',
+            layout_mode TEXT DEFAULT 'standard',
+            accent_color TEXT DEFAULT '#0b57d0',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    _ensure_column(conn, "user_ui_preferences", "theme_mode TEXT DEFAULT 'system'")
+    _ensure_column(conn, "user_ui_preferences", "layout_mode TEXT DEFAULT 'standard'")
+    _ensure_column(conn, "user_ui_preferences", "accent_color TEXT DEFAULT '#0b57d0'")
+    conn.commit()
+
+
+def ensure_admin_settings_schema(conn: sqlite3.Connection):
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS admin_settings (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            setting_key TEXT NOT NULL UNIQUE,
+            setting_value TEXT DEFAULT '',
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.commit()
+
+
+def ensure_admin_logs_schema(conn: sqlite3.Connection):
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS admin_logs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER,
+            event_type TEXT NOT NULL,
+            details TEXT DEFAULT '',
+            level TEXT DEFAULT 'info',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_admin_logs_time
+        ON admin_logs(created_at DESC)
+        """
+    )
+    conn.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_admin_logs_user
+        ON admin_logs(user_id)
+        """
+    )
     conn.commit()
 
 

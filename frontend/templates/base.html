@@ -24,6 +24,31 @@ color:#1f2a37;
 </head>
 
 <body>
+<script>
+  (function(){
+    const prefs = {
+      theme: "{{ (ui_prefs.theme_mode if ui_prefs else 'system') }}",
+      layout: "{{ (ui_prefs.layout_mode if ui_prefs else 'standard') }}",
+      accent: "{{ (ui_prefs.accent_color if ui_prefs else '#0b57d0') }}"
+    };
+    let theme = prefs.theme;
+    if(theme === "system"){
+      theme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    document.documentElement.setAttribute("data-theme", theme);
+    document.documentElement.setAttribute("data-layout", prefs.layout || "standard");
+    document.documentElement.style.setProperty("--accent-color", prefs.accent || "#0b57d0");
+  })();
+</script>
+
+<style>
+  :root{--accent-color:#0b57d0;}
+  [data-theme="dark"] body{background:#1b2430;color:#f2f5f8;}
+  [data-theme="dark"] .panel-card,[data-theme="dark"] .sidebar,[data-theme="dark"] .topbar{background:#243040;color:#f2f5f8;}
+  [data-layout="compact"] .main-panel{max-width:960px;margin:0 auto;}
+  [data-layout="wide"] .main-panel{max-width:1400px;}
+  .mui-btn--primary{background:var(--accent-color)!important;border-color:var(--accent-color)!important;}
+</style>
 
 {% block body %}{% endblock %}
 

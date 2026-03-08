@@ -1,0 +1,86 @@
+{% extends "dashboard_base.html" %}
+{% block content %}
+<section class="panel-card table-shell">
+  <div class="panel-card-header"><h3>Manage Users</h3></div>
+  <div class="panel-card-body">
+    <table>
+      <thead>
+        <tr>
+          <th>User ID</th><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Last Login</th><th>Created</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="adminUsersTable"><tr><td colspan="8">Loading...</td></tr></tbody>
+    </table>
+  </div>
+</section>
+<script>
+async function loadUsers(){
+  const res = await fetch("/api/admin/users");
+  const data = await res.json();
+  const tbody = document.getElementById("adminUsersTable");
+  if(!Array.isArray(data)){ tbody.innerHTML = "<tr><td colspan='8'>Access denied</td></tr>"; return; }
+  tbody.innerHTML = data.map(u => `
+    <tr>
+      <td>${u.id}</td>
+      <td>${u.full_name || "-"}</td>
+      <td>${u.email || "-"}</td>
+      <td>${u.role || "user"}</td>
+      <td>${u.account_status || "active"}</td>
+      <td>${u.last_login || "-"}</td>
+      <td>${u.created_at || "-"}</td>
+      <td>
+        <button onclick="changeRole(${u.id})">Role</button>
+        <button onclick="toggleStatus(${u.id}, '${u.account_status}')">${u.account_status === 'active' ? 'Disable' : 'Enable'}</button>
+        <button onclick="resetPwd(${u.id})">Reset Pwd</button>
+        <button onclick="viewProfile(${u.id})">Profile</button>
+        <button onclick="viewData(${u.id})">View Data</button>
+        <button onclick="deleteUser(${u.id})">Delete</button>
+      </td>
+    </tr>
+  `).join("");
+}
+async function postForm(url, fields){
+  const form = new FormData();
+  Object.keys(fields).forEach(k => form.append(k, fields[k]));
+  const res = await fetch(url, {method:"POST", body:form});
+  return await res.json();
+}
+async function changeRole(id){
+  const role = prompt("Enter role: admin / co_admin / user");
+  if(!role) return;
+  const data = await postForm(`/api/admin/users/${id}/role`, {role});
+  alert(data.status === "success" ? "Updated" : (data.error || "Failed"));
+  loadUsers();
+}
+async function toggleStatus(id, current){
+  const account_status = current === "active" ? "disabled" : "active";
+  const data = await postForm(`/api/admin/users/${id}/status`, {account_status});
+  alert(data.status === "success" ? "Updated" : (data.error || "Failed"));
+  loadUsers();
+}
+async function resetPwd(id){
+  const new_password = prompt("Enter new password (min 6 chars):");
+  if(!new_password) return;
+  const data = await postForm(`/api/admin/users/${id}/reset-password`, {new_password});
+  alert(data.status === "success" ? "Password reset" : (data.error || "Failed"));
+}
+async function viewData(id){
+  const res = await fetch(`/api/admin/users/${id}/data`);
+  const data = await res.json();
+  alert(JSON.stringify(data, null, 2));
+}
+async function viewProfile(id){
+  const res = await fetch(`/api/admin/users/${id}/profile`);
+  const data = await res.json();
+  alert(JSON.stringify(data, null, 2));
+}
+async function deleteUser(id){
+  if(!confirm("Delete this user?")) return;
+  const res = await fetch(`/api/admin/users/${id}`, {method:"DELETE"});
+  const data = await res.json();
+  alert(data.status === "success" ? "Deleted" : (data.error || "Failed"));
+  loadUsers();
+}
+loadUsers();
+</script>
+{% endblock %}

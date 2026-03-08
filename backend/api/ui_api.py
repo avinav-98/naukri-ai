@@ -23,6 +23,7 @@ from backend.utils.db_migrations import (
     ensure_ext_jobs_schema,
     ensure_jobs_directory_schema,
     ensure_relevant_jobs_schema,
+    ensure_standard_jobs_schema,
 )
 from backend.workers.pipeline_worker import enqueue_fetch_rank_apply
 
@@ -158,7 +159,7 @@ def relevant_jobs_rows(request: Request):
 @router.get("/applied-jobs-rows", response_class=HTMLResponse)
 def applied_jobs_rows(request: Request):
     user_id = request.state.user_id
-    rows = []
+    merged = {}
     try:
         conn = sqlite3.connect(DATABASE_PATHS["applied"])
         ensure_applied_jobs_schema(conn)
@@ -175,19 +176,56 @@ def applied_jobs_rows(request: Request):
         )
         rows = cur.fetchall()
         conn.close()
+        for r in rows:
+            key = r[3] or f"{r[0]}::{r[1]}::{r[2]}"
+            merged[key] = {
+                "title": r[0],
+                "company": r[1],
+                "location": r[2],
+                "job_url": r[3],
+                "applied_at": _to_utc_plus_530_text(r[4]),
+                "status": (r[5] or "applied").title(),
+                "_sort": str(r[4] or ""),
+            }
     except Exception:
-        rows = []
-    jobs = [
-        {
-            "title": r[0],
-            "company": r[1],
-            "location": r[2],
-            "job_url": r[3],
-            "applied_at": _to_utc_plus_530_text(r[4]),
-            "status": (r[5] or "applied").title(),
-        }
-        for r in rows
-    ]
+        pass
+
+    try:
+        conn = sqlite3.connect(DATABASE_PATHS["standard"])
+        ensure_standard_jobs_schema(conn)
+        cur = conn.cursor()
+        cur.execute(
+            """
+            SELECT job_title, company, location, job_url, created_at, status
+            FROM standard_jobs
+            WHERE user_id = ? AND lower(status) = 'applied'
+            ORDER BY id DESC
+            LIMIT 200
+            """,
+            (user_id,),
+        )
+        srows = cur.fetchall()
+        conn.close()
+        for r in srows:
+            key = r[3] or f"{r[0]}::{r[1]}::{r[2]}"
+            if key in merged:
+                continue
+            merged[key] = {
+                "title": r[0],
+                "company": r[1],
+                "location": r[2],
+                "job_url": r[3],
+                "applied_at": _to_utc_plus_530_text(r[4]),
+                "status": (r[5] or "applied").title(),
+                "_sort": str(r[4] or ""),
+            }
+    except Exception:
+        pass
+
+    jobs = list(merged.values())
+    jobs.sort(key=lambda x: x.get("_sort", ""), reverse=True)
+    for j in jobs:
+        j.pop("_sort", None)
     return templates.TemplateResponse("partials/applied_jobs_rows.html", {"request": request, "jobs": jobs})
 
 

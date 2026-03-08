@@ -176,7 +176,7 @@ def apply_to_job(user_id, job_title, company, location, experience, job_url):
                     external_apply_url=external_url,
                 )
                 save_job_status(user_id, job_title, company, location, job_url, "skipped")
-                log_activity("External Apply", job_title)
+                log_activity("External Apply", job_title, user_id=user_id)
                 context.close()
                 return {"status": "skipped", "external_apply_url": external_url}
 
@@ -195,7 +195,7 @@ def apply_to_job(user_id, job_title, company, location, experience, job_url):
                 save_applied_job(user_id, job_title, company, location, experience, job_url)
                 save_job_status(user_id, job_title, company, location, job_url, "applied")
 
-                log_activity("Job Applied", job_title)
+                log_activity("Job Applied", job_title, user_id=user_id)
                 context.close()
                 return {"status": "applied"}
 

@@ -1,5 +1,278 @@
 python -m uvicorn main:app --reload
-Project Restart Summary
+06-03-2026 18:58:49
+PROJECT: Naukri Auto Apply AI
+
+STACK
+FastAPI backend, Playwright automation, SQLite databases, Jinja templates frontend, async pipeline worker with polling UI. Local development at [http://127.0.0.1:8000](http://127.0.0.1:8000).
+
+AUTH + UI
+Routes: /signin, /signup, /dashboard, /jobs-directory, /fetch-jobs, /relevant-jobs, /applied-jobs, /settings, /profile.
+Auth pages use auth layout; application modules use dashboard layout with sidebar. Resume upload occurs on /fetch-jobs page using .txt resume input.
+
+PIPELINE FLOW
+User uploads resume → links Naukri credentials → clicks Run Pipeline.
+POST /api/fetch-jobs returns 202 Accepted with run_id.
+Worker executes pipeline asynchronously:
+fetch → rank → apply.
+UI polls GET /api/pipeline-runs/{run_id} every 4s for status (queued → running → completed/failed).
+
+AUTOMATION
+Playwright browser automation logs into Naukri and scrapes jobs.
+Thread-local Playwright instances are used to prevent greenlet/thread conflicts.
+Login endpoint uses threadpool execution to avoid running Sync Playwright inside FastAPI asyncio loop.
+
+JOB FETCH LOGIC
+Search query dynamically determined:
+
+1. Control Panel job_role (highest priority)
+2. Otherwise inferred from resume text.
+
+Resume parsing uses keyword scoring against ROLE_HINTS to infer role (data analyst, backend developer, devops engineer, etc.).
+job_scraper builds dynamic URL:
+[https://www.naukri.com/{slug}-jobs](https://www.naukri.com/{slug}-jobs)
+
+DATA FLOW
+Jobs scraped → stored in jobs_directory table with user_id.
+Ranking engine scores jobs against resume.
+Relevant jobs stored for review and auto-apply stage.
+
+DATA HYGIENE
+Before each new pipeline run the user's jobs_directory rows are cleared to prevent mixing results from previous queries.
+
+DATABASE
+SQLite with runtime migration system. db_migrations.py automatically adds missing columns (e.g., user_id) on startup to maintain backward compatibility.
+
+SECURITY
+JWT auth implemented with 32+ char secret key.
+Session cookies used for authenticated routes.
+
+CURRENT SYSTEM STATUS
+Auth working.
+Dashboard modules rendering correctly.
+Async pipeline operational.
+Playwright threading issues resolved.
+Dynamic resume-driven job search implemented.
+Control panel override working.
+
+NEXT ARCHITECTURE UPGRADE
+Replace in-process worker with Celery + Redis queue for distributed execution, crash resilience, and horizontal scaling.
+
+07-03-2026 03:45:27
+FETCH JOBS
+Redesign the Fetch Jobs page using Material UI components and a Mini CSS framework for better visibility.
+
+The page must contain only:
+
+* LINK NAUKRI PROFILE button
+  (Mandatory before running pipeline)
+* RUN PIPELINE button
+  (Material UI styled)
+* CLEAR HISTORY button
+  (Clears previous run records)
+* RECENT RUN TABLE (aligned table)
+
+Table schema:
+Date | Pages | Apply Limit | Fetched | Shortlisted | Message / Remark
+Each pipeline run should create a new row entry.
+
+CONTROL PANEL
+Control Panel is the main configuration source for job fetching.
+Fields:Job Role, Preferred Location, Total Experience, Salary Expectation, Scrap Pages, Auto Apply Limit, Upload Resume.txt
+
+Requirements:
+Fetch Jobs must read all filters from Control Panel.
+When user saves settings, store them locally along with resume.txt.
+Settings must auto-load when the app starts.
+
+IMPORTANT
+Remove the following from Fetch Jobs page:
+
+* Upload Resume
+* Scrap Pages
+* Auto Apply Limit
+  These must exist only in Control Panel.
+
+Fetch Jobs page should contain only:
+
+* LINK NAUKRI PROFILE
+* RUN PIPELINE
+* CLEAR HISTORY
+* RECENT RUN TABLE
+
+Change my project UI to the best modern stack:
+FastAPI
++
+HTMX
++
+Mini.css
+which gives me
+⚡ live UI updates
+⚡ no React required
+⚡ no page reloads
+⚡ super clean architecture
+Also convert my existing Dashboard UI into beautiful professional admin dashboard
+Why the date and time showing incorrectly, update time zome to UTC+5:30
+
+1. FILTER LOGIC FIX (CONTROL PANEL)
+   Control Panel filters are currently not working correctly.
+   Fix the filtering logic so that job fetching strictly follows these fields:
+   •	Job Role
+   •	Preferred Location
+   •	Total Experience
+   •	Salary Expectation
+   Requirements:
+   •	Jobs must be filtered before being added to the results list.
+   •	If a job does not match Preferred Location, it must be ignored.
+   •	Salary filtering must respect Salary Expectation range.
+   •	Ensure fetched jobs strictly match Control Panel filters.
+
+---
+
+2. APPLY STATUS BUG
+   Currently the system shows “Applied” even when no application was submitted.
+   Fix this logic:
+   •	Only mark a job as Applied after successful submission.
+   •	If submission fails or is skipped, mark it as:
+   o	Skipped
+   o	Failed
+   o	Filtered Out
+   Update the Recent Run statistics accordingly.
+
+---
+
+3. COMPANY COLUMN FIX
+   Currently the Company column displays job title.
+   Fix the table so that:
+   •	Company column shows company name
+   •	Job Title column shows job title
+   Ensure correct mapping from scraped data.
+
+---
+
+4. LOCATION ISSUE
+   When user sets Preferred Location, the system still fetches jobs from other locations.
+   Fix this so that:
+   •	Location filter is strictly applied.
+   •	Only matching location jobs are processed.
+
+---
+
+5. UI IMPROVEMENTS
+   Improve visual experience:
+   Add lightweight animations such as:
+   •	Button hover animations
+   •	Table row fade-in when new run is added
+   •	Loading animation while pipeline runs
+   Use Mini CSS framework + Material UI styling to make the app more attractive.
+
+---
+
+Expected Result
+•	Filters work correctly
+•	Apply status reflects real actions
+•	Company names display correctly
+•	Location filtering works properly
+•	UI feels smooth and modern with animations
+
+07-03-2026 17:56:41
+
+1. FETCH JOBS IMPROVEMENT
+   After the fetch process completes:
+   Add a button
+   GO TO DIRECTORY
+   Behavior:
+   •	Opens the Job Directory page
+   •	Displays fetched job records.
+
+---
+
+2. CREATE NEW MAIN TABS
+   Refactor navigation into these tabs:
+   Resume Tab
+   Contains:
+   •	Resume Analyzer
+   •	Keywords
+   Job Portal Tab
+   Contains:
+   •	Job Directory
+   •	Relevant Jobs
+   •	Applied Jobs
+
+---
+
+3. SETTINGS PANEL UPDATE
+   Add a setting to store user keywords and resume locally.
+   Requirements:
+   •	When user saves settings:
+   o	Store keywords internally
+   o	Create a local file called resume.txt
+   o	Save resume content in that file
+   •	Resume upload must be mandatory before saving settings.
+
+---
+
+4. RESUME ANALYZER MODEL
+   Create a module named Resume Analyzer.
+   Features:
+   •	Shows resume matching score for each fetched job
+   •	Score based on:
+   o	Job description
+   o	User keywords
+   o	Resume content
+   •	Display matching keywords used for scoring.
+   •	Allow user to view which keywords matched.
+
+---
+
+5. KEYWORDS MODEL
+   Create a Keywords page.
+   Behavior:
+   •	Store all keywords used during job fetch.
+   •	Show them in a list/table.
+   •	User can:
+   o	Copy keywords
+   o	View them anytime.
+   Add button at top:
+   DOWNLOAD KEYWORDS (.txt)
+   This exports all stored keywords to a text file.
+
+---
+
+6. JOB FETCH SCAN MODE
+   Add a Scan Mode selector in Fetch Jobs.
+   Modes:
+   Basic Mode
+   Filters using:
+   •	Salary Expectation
+   •	Job Role
+   •	Total Experience
+   •	Preferred Location
+   Advance Mode
+   Filters using:
+   •	Salary Expectation
+   •	Job Role
+   •	Total Experience
+   •	Resume Analyzer results
+   Extreme Mode
+   Filters using:
+   •	Job Role
+   •	Preferred Location
+   •	Total Experience
+   •	Salary Expectation
+   •	Resume Analyzer results
+   The selected mode determines which filters are applied during job fetching.
+
+---
+
+EXPECTED RESULT
+•	Resume tab with analysis tools
+•	Job portal tab with job management pages
+•	Keywords storage and export
+•	Resume analysis scoring system
+•	Scan mode selection for job fetching
+•	Button to open job directory after fetch completes
+
+Project Restart Summary (For Codex)
 Project: Naukri Auto Apply AI
 Local development server:
 python -m uvicorn main:app --reload
@@ -137,4 +410,301 @@ Benefits:
 •	distributed execution
 •	crash recovery
 •	horizontal scaling
+
+Codex Prompt — Refine Job Search Logic
+Improve the job search and filtering pipeline to produce highly relevant results.
+The system must follow the steps below when a user starts the pipeline after successful login.
+________________________________________
+1. JOB SEARCH PROCESS
+When the pipeline starts:
+1.	Navigate to the Naukri search page.
+2.	Locate the search bar.
+Fill search parameters using Control Panel settings:
+•	Job Role → required
+•	Preferred Location → optional (if set)
+•	Total Experience → optional (if set)
+Steps:
+•	Enter Job Role into search bar.
+•	Enter Preferred Location if available.
+•	Select Total Experience (years) if available.
+•	Execute the job search.
+________________________________________
+2. JOB SCRAPING
+After search results load:
+•	Scrape the entire job results page.
+•	Collect job details including:
+Job Title
+Company Name
+Location
+Experience Required
+Salary (if available)
+Job Description
+Job URL
+Scrape multiple pages according to Scrap Pages setting from Control Panel.
+________________________________________
+3. AI / INTELLIGENCE JOB ANALYSIS
+After scraping jobs:
+Run an analysis engine that ranks jobs based on relevance.
+Inputs for analysis:
+•	resume.txt
+•	user skills / keywords
+•	job description text
+Process:
+1.	Parse job description.
+2.	Extract important keywords.
+3.	Compare keywords with:
+resume.txt
+control panel inputs
+4.	Generate a relevance score for each job.
+________________________________________
+4. MODE-BASED SCANNING
+Apply filtering based on selected Scan Mode.
+Basic Mode
+Compare:
+•	Job Role
+•	Preferred Location
+•	Total Experience
+•	Salary Expectation
+________________________________________
+Advance Mode
+Compare:
+•	Job Role
+•	Total Experience
+•	Salary Expectation
+•	Resume analysis score
+________________________________________
+Extreme Mode
+Compare:
+•	Job Role
+•	Preferred Location
+•	Total Experience
+•	Salary Expectation
+•	Resume analysis score
+Extreme mode should apply the strictest filtering and ranking.
+________________________________________
+5. AUTO APPLY LOGIC
+After ranking all jobs:
+•	Sort jobs by highest relevance score.
+•	Select top jobs according to Auto Apply Limit.
+Then:
+1.	Open job page
+2.	Apply automatically via Playwright
+3.	Update job status
+Status options:
+Applied
+Skipped
+Failed
+Filtered Out
+Only mark Applied if submission succeeds.
+________________________________________
+6. KEYWORD EXTRACTION
+While scanning each job description:
+•	Extract all meaningful keywords.
+•	Store them in Keywords model.
+Keywords should include:
+•	skills
+•	technologies
+•	tools
+•	frameworks
+•	job requirements
+These keywords should be available for:
+•	Resume Analyzer
+•	Keyword export page
+________________________________________
+EXPECTED RESULT
+The system should:
+•	search jobs using user filters
+•	scrape job listings
+•	analyze job descriptions vs resume
+•	rank jobs by relevance
+•	auto apply to best matches
+•	store keywords from job descriptions
+
+External Jobs Handling + Applied Jobs Fix
+Enhance the job pipeline to correctly handle external application jobs and fix the Applied Jobs visibility issue.
+________________________________________
+1. CREATE NEW MODEL: EXT JOBS
+Create a new database model called:
+ExtJobs
+Purpose: store jobs where the Apply button redirects to an external company website instead of applying directly on Naukri.
+________________________________________
+External Job Detection
+During auto apply stage:
+1.	Open job page.
+2.	Click Apply button.
+3.	If the button redirects to an external website (not naukri.com):
+Do NOT attempt automation.
+Instead:
+•	Capture job details
+•	Save the job into ExtJobs table
+Fields should include:
+Job Title
+Company Name
+Location
+Experience
+Job URL
+External Apply URL
+Date Captured
+User ID
+________________________________________
+Behavior
+•	These jobs must not enter the auto apply pipeline.
+•	They should appear inside a new dashboard page:
+/ext-jobs
+Purpose:
+User can manually visit those links and apply directly.
+________________________________________
+2. AUTO APPLY JOBS NOT VISIBLE
+Fix issue where jobs successfully applied are not appearing in Applied Jobs page.
+________________________________________
+Required Fix
+When auto apply succeeds:
+1.	Update job status to:
+Applied
+2.	Insert or update record in Applied Jobs table.
+3.	Ensure page:
+/applied-jobs
+displays all jobs where status = Applied for the logged-in user.
+________________________________________
+Applied Jobs Page Must Show
+Job Title
+Company Name
+Location
+Apply Date
+Job Link
+Status
+________________________________________
+3. PIPELINE FLOW UPDATE
+Updated pipeline logic:
+Fetch Jobs
+   ↓
+Analyze + Rank
+   ↓
+Check Apply Button
+      ├─ Internal Apply → Auto Apply → Save to Applied Jobs
+      └─ External Redirect → Save to ExtJobs
+________________________________________
+EXPECTED RESULT
+•	External company jobs stored separately
+•	Users can manually apply from Ext Jobs page
+•	Successfully applied jobs appear in Applied Jobs page
+•	Pipeline avoids attempting impossible external applications
+
+Admin Panel + User Management System
+Extend the application by implementing a full Admin Management System and User UI Customization settings.
+________________________________________
+1. ADMIN PANEL
+Create a new secure admin console.
+Admin routes:
+/admin
+/admin/users
+/admin/settings
+/admin/logs
+Only users with admin role can access these routes.
+________________________________________
+2. ROLE SYSTEM
+Add role-based access control.
+Roles:
+admin
+co_admin
+user
+Permissions:
+Role	Permissions
+Admin	Full system control
+Co-Admin	Manage users but cannot change system settings
+User	Standard app access
+Admin can promote any user to Co-Admin.
+________________________________________
+3. USER MANAGEMENT
+Inside /admin/users, admin should see a table of all users.
+Table fields:
+User ID
+Name
+Email
+Role
+Account Status
+Last Login
+Created Date
+Admin actions:
+•	Reset user password
+•	Change user role
+•	Disable / enable account
+•	Delete user
+•	View user profile
+________________________________________
+4. USER DATA MANAGEMENT
+Admin must be able to view and edit user data including:
+User Name
+Email
+Password (reset only)
+Naukri credentials
+Control panel settings
+Resume file
+User job history
+This includes:
+jobs_directory
+relevant_jobs
+applied_jobs
+ext_jobs
+keywords
+Admin can inspect or remove records if needed.
+________________________________________
+5. PASSWORD RECOVERY SYSTEM
+Implement Forgot Password flow.
+Routes:
+/forgot-password
+/reset-password/{token}
+Process:
+1.	User enters email.
+2.	System generates reset token.
+3.	User resets password.
+Admin can also reset password manually from admin panel.
+________________________________________
+6. ADMIN DASHBOARD
+Admin homepage /admin should show system overview.
+Metrics:
+Total Users
+Active Users
+Total Jobs Scraped
+Total Jobs Applied
+External Jobs Count
+Pipeline Runs Today
+Display using dashboard cards and tables.
+________________________________________
+7. ADMIN LOGS
+Create /admin/logs.
+Show logs for:
+User login events
+Pipeline runs
+Job applications
+System errors
+Include timestamp and user_id.
+________________________________________
+8. USER UI CUSTOMIZATION
+Add a UI Preferences setting for users.
+Users can choose:
+Theme Mode:
+Light
+Dark
+System
+Layout Options:
+Compact
+Standard
+Wide
+Accent Color options.
+Preferences should be stored in database and applied when user logs in.
+________________________________________
+9. SECURITY
+Admin routes must require:
+role = admin
+Co-admins cannot access system settings or delete admins.
+________________________________________
+EXPECTED RESULT
+System will now support:
+•	Admin control panel
+•	Role-based access control
+•	Password recovery system
+•	User management tools
+•	UI theme customization
+•	System monitoring dashboard
 

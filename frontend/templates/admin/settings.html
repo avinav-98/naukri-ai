@@ -1,0 +1,32 @@
+{% extends "dashboard_base.html" %}
+{% block content %}
+<section class="panel-card">
+  <div class="panel-card-header"><h3>System Settings (Admin Only)</h3></div>
+  <div class="panel-card-body">
+    <form id="adminSettingForm">
+      <label>Setting Key</label>
+      <input name="setting_key" required placeholder="example_key">
+      <label>Setting Value</label>
+      <input name="setting_value" placeholder="value">
+      <button type="submit" class="mui-btn mui-btn--primary">Save</button>
+    </form>
+    <pre id="adminSettingsDump"></pre>
+  </div>
+</section>
+<script>
+async function loadAdminSettings(){
+  const res = await fetch("/api/admin/settings");
+  const data = await res.json();
+  document.getElementById("adminSettingsDump").textContent = JSON.stringify(data, null, 2);
+}
+document.getElementById("adminSettingForm").addEventListener("submit", async function(e){
+  e.preventDefault();
+  const formData = new FormData(this);
+  const res = await fetch("/api/admin/settings", {method:"POST", body:formData});
+  const data = await res.json();
+  alert(data.status === "success" ? "Saved" : (data.error || "Failed"));
+  loadAdminSettings();
+});
+loadAdminSettings();
+</script>
+{% endblock %}

@@ -42,6 +42,18 @@
         <a href="/settings">Control Panel</a>
         <a href="/profile">Profile</a>
       </details>
+
+      {% if role in ["admin", "co_admin"] %}
+      <details class="nav-section" open>
+        <summary>Admin</summary>
+        <a href="/admin">Admin Dashboard</a>
+        <a href="/admin/users">Manage Users</a>
+        {% if role == "admin" %}
+        <a href="/admin/settings">System Settings</a>
+        {% endif %}
+        <a href="/admin/logs">Admin Logs</a>
+      </details>
+      {% endif %}
     </nav>
   </aside>
 

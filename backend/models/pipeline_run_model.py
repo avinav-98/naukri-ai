@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional
 
 from backend.config import DATABASE_PATHS
+from backend.models.admin_log_model import log_admin_event
 
 
 DB = DATABASE_PATHS["runs"]
@@ -72,6 +73,7 @@ def start_run(
     run_id = cur.lastrowid
     conn.commit()
     conn.close()
+    log_admin_event("pipeline_run_started", f"Run {run_id} started ({run_type})", user_id=user_id)
     return int(run_id)
 
 
@@ -110,6 +112,7 @@ def update_run(
     cur.execute(f"UPDATE automation_runs SET {', '.join(assignments)} WHERE id = ?", params)
     conn.commit()
     conn.close()
+    log_admin_event("pipeline_run_updated", f"Run {run_id} -> {status}; {message}", level="error" if status == "failed" else "info")
 
 
 def get_latest_runs(user_id: int, limit: int = 20):

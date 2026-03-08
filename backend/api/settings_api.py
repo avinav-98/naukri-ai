@@ -2,6 +2,7 @@ from fastapi import APIRouter, File, Form, Request, UploadFile
 from fastapi.responses import JSONResponse
 
 from backend.models.settings_model import get_settings, save_settings
+from backend.models.ui_preferences_model import get_ui_preferences, save_ui_preferences
 from backend.services.automation_pipeline_service import ensure_user_resume, has_user_resume
 
 router = APIRouter(prefix="/api")
@@ -60,3 +61,21 @@ def read_settings(request: Request):
     data = get_settings(user_id=user_id)
     data["has_resume"] = has_user_resume(user_id)
     return data
+
+
+@router.get("/ui-preferences")
+def read_ui_preferences(request: Request):
+    user_id = request.state.user_id
+    return get_ui_preferences(user_id=user_id)
+
+
+@router.post("/ui-preferences")
+def update_ui_preferences(
+    request: Request,
+    theme_mode: str = Form("system"),
+    layout_mode: str = Form("standard"),
+    accent_color: str = Form("#0b57d0"),
+):
+    user_id = request.state.user_id
+    save_ui_preferences(user_id=user_id, theme_mode=theme_mode, layout_mode=layout_mode, accent_color=accent_color)
+    return {"status": "saved"}

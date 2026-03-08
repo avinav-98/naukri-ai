@@ -73,6 +73,8 @@ def ensure_jobs_directory_schema(conn: sqlite3.Connection):
             location TEXT,
             experience TEXT,
             salary TEXT,
+            job_description TEXT,
+            resume_match_score REAL DEFAULT 0,
             job_url TEXT,
             scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -81,6 +83,8 @@ def ensure_jobs_directory_schema(conn: sqlite3.Connection):
     _ensure_column(conn, "jobs_directory", "user_id INTEGER NOT NULL DEFAULT 1")
     _ensure_column(conn, "jobs_directory", "experience TEXT")
     _ensure_column(conn, "jobs_directory", "salary TEXT")
+    _ensure_column(conn, "jobs_directory", "job_description TEXT")
+    _ensure_column(conn, "jobs_directory", "resume_match_score REAL DEFAULT 0")
     conn.execute(
         """
         CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_user_url
@@ -125,16 +129,55 @@ def ensure_applied_jobs_schema(conn: sqlite3.Connection):
             job_title TEXT,
             company TEXT,
             location TEXT,
+            experience TEXT,
             job_url TEXT,
+            status TEXT DEFAULT 'applied',
             applied_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
     )
     _ensure_column(conn, "applied_jobs", "user_id INTEGER NOT NULL DEFAULT 1")
+    _ensure_column(conn, "applied_jobs", "experience TEXT")
+    _ensure_column(conn, "applied_jobs", "status TEXT DEFAULT 'applied'")
+    conn.execute(
+        """
+        UPDATE applied_jobs
+        SET status = 'applied'
+        WHERE status IS NULL OR TRIM(status) = ''
+        """
+    )
     conn.execute(
         """
         CREATE UNIQUE INDEX IF NOT EXISTS idx_applied_user_url
         ON applied_jobs(user_id, job_url)
+        """
+    )
+    conn.commit()
+
+
+def ensure_ext_jobs_schema(conn: sqlite3.Connection):
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS ext_jobs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL DEFAULT 1,
+            job_title TEXT,
+            company TEXT,
+            location TEXT,
+            experience TEXT,
+            job_url TEXT,
+            external_apply_url TEXT,
+            captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+        """
+    )
+    _ensure_column(conn, "ext_jobs", "user_id INTEGER NOT NULL DEFAULT 1")
+    _ensure_column(conn, "ext_jobs", "experience TEXT")
+    _ensure_column(conn, "ext_jobs", "external_apply_url TEXT")
+    conn.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_ext_user_url
+        ON ext_jobs(user_id, job_url)
         """
     )
     conn.commit()

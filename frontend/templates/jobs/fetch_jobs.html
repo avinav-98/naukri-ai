@@ -2,42 +2,102 @@
 
 {% block content %}
 
-<h2>Fetch Jobs</h2>
+<section class="panel-card">
+  <div class="panel-card-header">
+    <h3>Fetch Jobs</h3>
+  </div>
+  <div class="panel-card-body">
+    <p>Run uses saved filters from Control Panel.</p>
+    <div class="fetch-controls">
+      <div style="max-width:240px;">
+        <label for="scanMode">Scan Mode</label>
+        <select id="scanMode" name="scan_mode">
+          <option value="basic" {% if (settings.scan_mode or "basic") == "basic" %}selected{% endif %}>Basic Mode</option>
+          <option value="advance" {% if settings.scan_mode == "advance" %}selected{% endif %}>Advance Mode</option>
+          <option value="extreme" {% if settings.scan_mode == "extreme" %}selected{% endif %}>Extreme Mode</option>
+        </select>
+      </div>
 
-<button id="linkPortalBtn" type="button">Link Naukri Profile</button>
+      <div class="fetch-actions">
+      <button
+        class="mui-btn mui-btn--primary"
+        hx-indicator="#pipelineLoading"
+        hx-post="/ui/portal-login"
+        hx-target="#actionStatus"
+        hx-swap="innerHTML"
+      >
+        LINK NAUKRI PROFILE
+      </button>
 
-<form id="fetchForm" style="margin-top:12px">
-  <label>Resume (.txt)</label><br>
-  <input type="file" name="resume_file" accept=".txt,text/plain" required><br><br>
+      <button
+        type="button"
+        class="mui-btn mui-btn--accent"
+        hx-indicator="#pipelineLoading"
+        hx-post="/ui/run-pipeline"
+        hx-include="#scanMode"
+        hx-target="#actionStatus"
+        hx-swap="innerHTML"
+      >
+        RUN PIPELINE
+      </button>
 
-  <label>Pages to Scrape (1-20)</label><br>
-  <input type="number" name="pages" min="1" max="20" value="5"><br><br>
+      <button
+        class="mui-btn mui-btn--danger"
+        hx-indicator="#pipelineLoading"
+        hx-delete="/ui/clear-pipeline-runs"
+        hx-target="#actionStatus"
+        hx-swap="innerHTML"
+      >
+        CLEAR HISTORY
+      </button>
+      </div>
+    </div>
 
-  <label>Auto Apply Limit (1-20)</label><br>
-  <input type="number" name="auto_apply_limit" min="1" max="20" value="10"><br><br>
+    <div id="actionStatus" style="margin-top:14px;">
+      {% include "partials/status_message.html" with context %}
+    </div>
+    <div id="pipelineLoading" class="loading-indicator">
+      <span class="loading-dot"></span>
+      <span class="loading-dot"></span>
+      <span class="loading-dot"></span>
+      <span>Running...</span>
+    </div>
+    <div
+      id="goDirectoryWrap"
+      hx-get="/ui/fetch-go-directory"
+      hx-trigger="load, every 4s"
+      hx-swap="innerHTML"
+      style="margin-top:10px;"
+    ></div>
+  </div>
+</section>
 
-  <button id="runBtn" type="button">Run Pipeline</button>
-</form>
-
-<p id="status"></p>
-
-<h3>Recent Runs</h3>
-<table id="runsTable">
-  <thead>
-    <tr>
-      <th>Run ID</th>
-      <th>Status</th>
-      <th>Pages</th>
-      <th>Apply Limit</th>
-      <th>Fetched</th>
-      <th>Shortlisted</th>
-      <th>Applied</th>
-      <th>Message</th>
-    </tr>
-  </thead>
-  <tbody></tbody>
-</table>
-
-<script src="/static/js/fetch_jobs.js"></script>
+<section class="panel-card table-shell" style="margin-top:16px;">
+  <div class="panel-card-header">
+    <h3>Recent Runs</h3>
+  </div>
+  <div class="panel-card-body">
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Pages</th>
+          <th>Apply Limit</th>
+          <th>Fetched</th>
+          <th>Shortlisted</th>
+          <th>Message / Remark</th>
+        </tr>
+      </thead>
+      <tbody
+        hx-indicator="#pipelineLoading"
+        hx-get="/ui/pipeline-runs-rows"
+        hx-trigger="load, every 4s"
+        hx-swap="innerHTML"
+      >
+        <tr><td colspan="6">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 
 {% endblock %}

@@ -2,20 +2,29 @@
 
 {% block content %}
 
-<h1>Jobs Directory</h1>
-
-<table>
-  <thead>
-    <tr>
-      <th>Title</th>
-      <th>Company</th>
-      <th>Location</th>
-      <th>Open</th>
-    </tr>
-  </thead>
-  <tbody id="jobs_table"></tbody>
-</table>
-
-<script src="/static/js/jobs_directory.js"></script>
+<section class="panel-card table-shell">
+  <div class="panel-card-header">
+    <h3>Jobs Directory</h3>
+  </div>
+  <div class="panel-card-body">
+    <table>
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Company</th>
+          <th>Location</th>
+          <th>Open</th>
+        </tr>
+      </thead>
+      <tbody
+        hx-get="/ui/jobs-directory-rows"
+        hx-trigger="load, every 12s"
+        hx-swap="innerHTML"
+      >
+        <tr><td colspan="4">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 
 {% endblock %}

@@ -1,0 +1,40 @@
+.control-shell {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 10px 22px rgba(22, 32, 49, 0.08);
+}
+
+.muted-text {
+  color: #60718a;
+  margin-bottom: 14px;
+}
+
+.grid-form {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px 16px;
+}
+
+.grid-form label {
+  margin-top: 8px;
+}
+
+.panel-actions {
+  margin-top: 16px;
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.resume-status {
+  color: #1b5e20;
+  font-weight: 600;
+}
+
+@media (max-width: 900px) {
+  .grid-form {
+    grid-template-columns: 1fr;
+  }
+}
+

@@ -1,0 +1,13 @@
+{% if rows %}
+{% for row in rows %}
+<tr>
+  <td><a href="{{ row.job_url }}" target="_blank">{{ row.title }}</a></td>
+  <td>{{ row.company or "-" }}</td>
+  <td>{{ row.location or "-" }}</td>
+  <td>{{ row.score }}</td>
+  <td>{{ row.matched_keywords | join(', ') if row.matched_keywords else '-' }}</td>
+</tr>
+{% endfor %}
+{% else %}
+<tr><td colspan="5">No analyzed jobs available.</td></tr>
+{% endif %}

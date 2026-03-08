@@ -24,7 +24,7 @@ def run_worker():
 
         print(f"\nRunning automation for user {user_id}")
 
-        resume_path = f"storage/users/{user_id}/resumes/my_resume.txt"
+        resume_path = f"storage/users/{user_id}/resumes/resume.txt"
 
         auto_apply(
             user_id=user_id,

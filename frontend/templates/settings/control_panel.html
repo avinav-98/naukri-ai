@@ -2,32 +2,92 @@
 
 {% block content %}
 
-<h1>Control Panel</h1>
+<section class="panel-card">
+  <div class="panel-card-header">
+    <h3>Control Panel</h3>
+  </div>
+  <div class="panel-card-body">
+    <p>Primary configuration source for job fetching and auto-apply pipeline.</p>
+    <form
+      class="stacked"
+      enctype="multipart/form-data"
+      hx-post="/ui/settings-save"
+      hx-target="#settingsStatus"
+      hx-swap="innerHTML"
+    >
+      <div class="settings-grid">
+        <label>Job Role</label>
+        <input type="text" name="job_role" placeholder="Backend Developer" value="{{ settings.job_role }}">
 
-<form id="settingsForm">
+        <label>Preferred Location</label>
+        <input type="text" name="preferred_location" placeholder="Bengaluru" value="{{ settings.preferred_location }}">
 
-<label>Job Role</label>
-<input type="text" id="job_role">
+        <label>Total Experience</label>
+        <input type="text" name="experience" placeholder="3 years" value="{{ settings.experience }}">
 
-<label>Location</label>
-<input type="text" id="location">
+        <label>Salary Expectation</label>
+        <input type="text" name="salary" placeholder="12 LPA" value="{{ settings.salary }}">
 
-<label>Experience</label>
-<input type="text" id="experience">
+        <label>Keywords (comma separated)</label>
+        <textarea name="keywords" rows="3" placeholder="python, fastapi, sql">{{ settings.keywords }}</textarea>
 
-<label>Salary</label>
-<input type="text" id="salary">
+        <label>Scan Mode</label>
+        <select name="scan_mode">
+          <option value="basic" {% if (settings.scan_mode or "basic") == "basic" %}selected{% endif %}>Basic Mode</option>
+          <option value="advance" {% if settings.scan_mode == "advance" %}selected{% endif %}>Advance Mode</option>
+          <option value="extreme" {% if settings.scan_mode == "extreme" %}selected{% endif %}>Extreme Mode</option>
+        </select>
 
-<label>Pages to Scrape</label>
-<input type="number" id="pages">
+        <label>Scrap Pages (1-20)</label>
+        <input type="number" name="pages_to_scrape" min="1" max="20" value="{{ settings.pages_to_scrape or 5 }}">
 
-<label>Auto Apply Limit</label>
-<input type="number" id="limit">
+        <label>Auto Apply Limit (1-20)</label>
+        <input type="number" name="auto_apply_limit" min="1" max="20" value="{{ settings.auto_apply_limit or 10 }}">
 
-<button type="submit">Save</button>
+        <label>Upload Resume.txt</label>
+        <input type="file" name="resume_file" accept=".txt,text/plain">
+      </div>
 
-</form>
+      <div style="margin-top:14px;">
+        <button type="submit" class="mui-btn mui-btn--primary">Save Settings</button>
+        <span style="margin-left:8px;color:#4b5f77;">
+          Resume upload required only if no saved resume exists.
+        </span>
+      </div>
+    </form>
 
-<script src="/static/js/settings.js"></script>
+    <div id="settingsStatus" style="margin-top:12px;"></div>
+  </div>
+</section>
+
+<section class="panel-card" style="margin-top:16px;">
+  <div class="panel-card-header">
+    <h3>Current Runtime</h3>
+  </div>
+  <div class="panel-card-body">
+    <ul>
+      <li>Job Role: <strong>{{ settings.job_role or "-" }}</strong></li>
+      <li>Location: <strong>{{ settings.preferred_location or "-" }}</strong></li>
+      <li>Pages: <strong>{{ settings.pages_to_scrape or 5 }}</strong></li>
+      <li>Auto Apply Limit: <strong>{{ settings.auto_apply_limit or 10 }}</strong></li>
+      <li>Scan Mode: <strong>{{ settings.scan_mode or "basic" }}</strong></li>
+      <li>Keywords: <strong>{{ settings.keywords or "-" }}</strong></li>
+    </ul>
+  </div>
+</section>
+
+<style>
+.settings-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .settings-grid {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
 
 {% endblock %}

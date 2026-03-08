@@ -1,0 +1,10 @@
+{% if keywords %}
+{% for kw in keywords %}
+<tr>
+  <td>{{ loop.index }}</td>
+  <td>{{ kw }}</td>
+</tr>
+{% endfor %}
+{% else %}
+<tr><td colspan="2">No keywords stored.</td></tr>
+{% endif %}

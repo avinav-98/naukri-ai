@@ -2,23 +2,31 @@
 
 {% block content %}
 
-<h1>Applied Jobs</h1>
-
-<table id="applied_table">
-
-<thead>
-<tr>
-<th>Title</th>
-<th>Company</th>
-<th>Location</th>
-<th>Date</th>
-</tr>
-</thead>
-
-<tbody></tbody>
-
-</table>
-
-<script src="/static/js/applied_jobs.js"></script>
+<section class="panel-card table-shell">
+  <div class="panel-card-header">
+    <h3>Applied Jobs</h3>
+  </div>
+  <div class="panel-card-body">
+    <table>
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Company</th>
+          <th>Location</th>
+          <th>Apply Date</th>
+          <th>Job Link</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody
+        hx-get="/ui/applied-jobs-rows"
+        hx-trigger="load, every 12s"
+        hx-swap="innerHTML"
+      >
+        <tr><td colspan="6">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 
 {% endblock %}

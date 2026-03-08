@@ -1,59 +1,57 @@
 {% extends "base.html" %}
 
+{% block head_extra %}
+<link rel="stylesheet" href="/static/css/admin.css">
+{% endblock %}
+
 {% block body %}
 
-<style>
+<div class="admin-layout">
+  <aside class="sidebar">
+    <div class="brand-block">
+      <div class="brand-dot"></div>
+      <div>
+        <h2>Naukri AI</h2>
+        <p>Automation Console</p>
+      </div>
+    </div>
 
-.sidebar{
-width:220px;
-height:100vh;
-background:#1f2a38;
-position:fixed;
-color:white;
-padding-top:20px;
-}
+    <nav class="nav-links">
+      <details class="nav-section" open>
+        <summary>Overview</summary>
+        <a href="/dashboard">Dashboard</a>
+      </details>
 
-.sidebar h2{
-text-align:center;
-margin-bottom:30px;
-}
+      <details class="nav-section" open>
+        <summary>Resume</summary>
+        <a href="/resume-analyzer">Resume Analyzer</a>
+        <a href="/keywords">Keywords</a>
+      </details>
 
-.sidebar a{
-display:block;
-color:white;
-padding:12px 20px;
-text-decoration:none;
-}
+      <details class="nav-section" open>
+        <summary>Job Portal</summary>
+        <a href="/fetch-jobs">Fetch Jobs</a>
+        <a href="/jobs-directory">Jobs Directory</a>
+        <a href="/relevant-jobs">Relevant Jobs</a>
+        <a href="/applied-jobs">Applied Jobs</a>
+        <a href="/ext-jobs">Ext Jobs</a>
+      </details>
 
-.sidebar a:hover{
-background:#32465a;
-}
+      <details class="nav-section" open>
+        <summary>Config</summary>
+        <a href="/settings">Control Panel</a>
+        <a href="/profile">Profile</a>
+      </details>
+    </nav>
+  </aside>
 
-.main{
-margin-left:220px;
-padding:30px;
-}
-
-</style>
-
-<div class="sidebar">
-
-<h2>Job Bot</h2>
-
-<a href="/dashboard">Dashboard</a>
-<a href="/fetch-jobs">Fetch Jobs</a>
-<a href="/jobs-directory">Jobs Directory</a>
-<a href="/relevant-jobs">Relevant Jobs</a>
-<a href="/applied-jobs">Applied Jobs</a>
-<a href="/settings">Control Panel</a>
-<a href="/profile">Profile</a>
-
-</div>
-
-<div class="main">
-
-{% block content %}{% endblock %}
-
+  <main class="main-panel">
+    <header class="topbar">
+      <h1>Admin Dashboard</h1>
+      <span class="pill-online">Live</span>
+    </header>
+    {% block content %}{% endblock %}
+  </main>
 </div>
 
 {% endblock %}

@@ -1,0 +1,13 @@
+{% if jobs %}
+{% for job in jobs %}
+<tr>
+  <td>{{ job.title or "-" }}</td>
+  <td>{{ job.company or "-" }}</td>
+  <td>{{ job.location or "-" }}</td>
+  <td>{{ "%.2f"|format(job.score) if job.score is not none else "-" }}</td>
+  <td>{% if job.url %}<a href="{{ job.url }}" target="_blank">Open</a>{% else %}-{% endif %}</td>
+</tr>
+{% endfor %}
+{% else %}
+<tr><td colspan="5">No relevant jobs ranked yet.</td></tr>
+{% endif %}

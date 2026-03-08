@@ -2,24 +2,30 @@
 
 {% block content %}
 
-<h1>Relevant Jobs</h1>
-
-<table id="relevant_table">
-
-<thead>
-<tr>
-<th>Title</th>
-<th>Company</th>
-<th>Location</th>
-<th>Score</th>
-<th>Open</th>
-</tr>
-</thead>
-
-<tbody></tbody>
-
-</table>
-
-<script src="/static/js/relevant_jobs.js"></script>
+<section class="panel-card table-shell">
+  <div class="panel-card-header">
+    <h3>Relevant Jobs</h3>
+  </div>
+  <div class="panel-card-body">
+    <table>
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Company</th>
+          <th>Location</th>
+          <th>Score</th>
+          <th>Open</th>
+        </tr>
+      </thead>
+      <tbody
+        hx-get="/ui/relevant-jobs-rows"
+        hx-trigger="load, every 12s"
+        hx-swap="innerHTML"
+      >
+        <tr><td colspan="5">Loading...</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
 
 {% endblock %}

@@ -9,5 +9,6 @@ DATABASE_PATHS = {
     "relevant": BASE_DIR / "database" / "relevant_jobs.db",
     "settings": BASE_DIR / "database" / "settings.db",
     "standard": BASE_DIR / "database" / "standard_jobs.db",
+    "ext": BASE_DIR / "database" / "ext_jobs.db",
     "runs": BASE_DIR / "database" / "automation_runs.db",
 }

@@ -1,0 +1,3 @@
+{% set _kind = kind if kind is defined else "info" %}
+{% set _msg = message if message is defined else "Ready." %}
+<div class="status-message status-{{ _kind }}">{{ _msg }}</div>

@@ -1,0 +1,23 @@
+{% if jobs %}
+{% for job in jobs %}
+<tr>
+  <td>{{ job.title or "-" }}</td>
+  <td>{{ job.company or "-" }}</td>
+  <td>{{ job.location or "-" }}</td>
+  <td>{{ job.experience or "-" }}</td>
+  <td>
+    {% if job.job_url %}
+    <a href="{{ job.job_url }}" target="_blank" rel="noopener noreferrer">Open</a>
+    {% else %}-{% endif %}
+  </td>
+  <td>
+    {% if job.external_apply_url %}
+    <a href="{{ job.external_apply_url }}" target="_blank" rel="noopener noreferrer">Apply Now</a>
+    {% else %}-{% endif %}
+  </td>
+  <td>{{ job.captured_at or "-" }}</td>
+</tr>
+{% endfor %}
+{% else %}
+<tr><td colspan="7">No external jobs yet.</td></tr>
+{% endif %}

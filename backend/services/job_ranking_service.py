@@ -11,9 +11,9 @@ def _ensure_relevant_table():
     conn.close()
 
 
-def rank_and_store_jobs(user_id: int, resume_text: str, shortlist_limit: int = 20) -> int:
+def rank_and_store_jobs(user_id: int, resume_text: str, shortlist_limit: int = 20, settings: dict | None = None) -> int:
     _ensure_relevant_table()
-    ranked_jobs = rank_jobs(resume_text, user_id=user_id, limit=shortlist_limit)
+    ranked_jobs = rank_jobs(resume_text, user_id=user_id, limit=shortlist_limit, settings=settings)
 
     conn = sqlite3.connect(DATABASE_PATHS["relevant"])
     cur = conn.cursor()
@@ -21,14 +21,20 @@ def rank_and_store_jobs(user_id: int, resume_text: str, shortlist_limit: int = 2
     inserted = 0
 
     for score, job in ranked_jobs:
-        job_title, company, location, job_url = job
         cur.execute(
             """
             INSERT INTO relevant_jobs
             (user_id, job_title, company, location, job_url, score)
             VALUES (?, ?, ?, ?, ?, ?)
             """,
-            (user_id, job_title, company, location, job_url, float(score)),
+            (
+                user_id,
+                job["job_title"],
+                job["company"],
+                job["location"],
+                job["job_url"],
+                float(score),
+            ),
         )
         inserted += 1
 

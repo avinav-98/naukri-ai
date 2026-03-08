@@ -1,20 +1,39 @@
-Abhinav Upadhyay
-Senior Data Analyst
-
-Skills
-Python
-SQL
-Power BI
-Data Analysis
-Machine Learning
-ETL Pipelines
-Automation
-
-Experience
-Senior Data Analyst with 7+ years experience in data analytics,
-dashboard creation, data modeling, and business intelligence.
-
-Worked extensively with Python, SQL, Power BI and automation tools
-to analyze large datasets and generate business insights.
-
+Abhinav Upadhyay
+
+Senior Data Analyst
+
+
+
+Skills
+
+Python
+
+SQL
+
+Power BI
+
+Data Analysis
+
+Machine Learning
+
+ETL Pipelines
+
+Automation
+
+
+
+Experience
+
+Senior Data Analyst with 7+ years experience in data analytics,
+
+dashboard creation, data modeling, and business intelligence.
+
+
+
+Worked extensively with Python, SQL, Power BI and automation tools
+
+to analyze large datasets and generate business insights.
+
+
+
 Experience in MIS reporting, ERP systems, and data transformation.

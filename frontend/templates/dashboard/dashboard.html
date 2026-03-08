@@ -2,27 +2,29 @@
 
 {% block content %}
 
-<h1>Dashboard</h1>
+<section class="panel-card">
+  <div class="panel-card-header">
+    <h3>System Overview</h3>
+  </div>
+  <div
+    class="panel-card-body stat-grid"
+    hx-get="/ui/dashboard-stats"
+    hx-trigger="load, every 8s"
+    hx-swap="innerHTML"
+  >
+    <article class="stat-card"><h4>Loading</h4><p class="value">...</p></article>
+  </div>
+</section>
 
-<div style="display:flex;gap:30px;margin-top:30px">
-
-<div style="background:white;padding:20px;border-radius:6px;width:200px">
-<h3>Jobs Directory</h3>
-<h2 id="jobs_directory">0</h2>
-</div>
-
-<div style="background:white;padding:20px;border-radius:6px;width:200px">
-<h3>Relevant Jobs</h3>
-<h2 id="relevant_jobs">0</h2>
-</div>
-
-<div style="background:white;padding:20px;border-radius:6px;width:200px">
-<h3>Applied Jobs</h3>
-<h2 id="applied_jobs">0</h2>
-</div>
-
-</div>
-
-<script src="/static/js/dashboard.js"></script>
+<section class="panel-card" style="margin-top:16px;">
+  <div class="panel-card-header">
+    <h3>Quick Actions</h3>
+  </div>
+  <div class="panel-card-body">
+    <a class="mui-btn mui-btn--primary" href="/fetch-jobs">Run Pipeline</a>
+    <a class="mui-btn mui-btn--accent" href="/settings">Open Control Panel</a>
+    <a class="mui-btn" href="/jobs-directory">View Jobs Directory</a>
+  </div>
+</section>
 
 {% endblock %}

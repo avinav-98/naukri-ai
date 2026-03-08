@@ -7,7 +7,7 @@ def run_scheduler():
 
     schedule.every(6).hours.do(
         auto_apply,
-        resume_path="storage/resumes/my_resume.txt",
+        resume_path="storage/resumes/resume.txt",
         limit=5
     )
 

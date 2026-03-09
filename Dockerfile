@@ -1,14 +1,15 @@
 FROM python:3.11-slim
 
-ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1
 
 WORKDIR /app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
     curl \
     git \
-    build-essential \
     wget \
     libglib2.0-0 \
     libnss3 \
@@ -24,19 +25,11 @@ RUN apt-get update && apt-get install -y \
     libgtk-3-0 \
     && rm -rf /var/lib/apt/lists/*
 
-# Upgrade pip
-RUN pip install --upgrade pip
-
-# Copy requirements first (docker cache optimization)
 COPY requirements.txt .
+RUN pip install --upgrade pip \
+    && pip install --default-timeout=1000 -r requirements.txt \
+    && playwright install chromium
 
-# Install dependencies with longer timeout
-RUN pip install --default-timeout=1000 --no-cache-dir -r requirements.txt
-
-# Install Playwright browsers
-RUN playwright install chromium
-
-# Copy project
 COPY . .
 
 EXPOSE 8000

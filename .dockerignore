@@ -1,18 +1,22 @@
-fastapi
-uvicorn
-jinja2
-python-multipart
-sqlalchemy
-passlib[bcrypt]
-python-jose
-playwright
-beautifulsoup4
-sentence-transformers
-pandas
-numpy
-fake-useragent
-python-dotenv
-schedule
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.pytest_cache/
+.mypy_cache/
 
-# Force CPU version of torch
-torch --index-url https://download.pytorch.org/whl/cpu
+.git/
+.gitignore
+.vscode/
+
+node_modules/
+naukri-ai/
+
+database/
+storage/
+
+codex.txt
+
+Dockerfile
+.dockerignore

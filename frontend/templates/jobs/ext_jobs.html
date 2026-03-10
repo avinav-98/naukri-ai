@@ -22,12 +22,13 @@
     <table>
       <thead>
         <tr>
-          <th>Title</th>
-          <th>Company</th>
+          <th>Job Title</th>
+          <th>Company Name</th>
           <th>Location</th>
           <th>Experience</th>
+          <th>Resume Match Score</th>
           <th>Job Link</th>
-          <th>External Apply</th>
+          <th>External Apply Link</th>
           <th>Date Captured</th>
         </tr>
       </thead>
@@ -36,7 +37,7 @@
         hx-trigger="load, every 12s, refreshExtJobs from:body"
         hx-swap="innerHTML"
       >
-        <tr><td colspan="7">Loading...</td></tr>
+        <tr><td colspan="8">Loading...</td></tr>
       </tbody>
     </table>
   </div>

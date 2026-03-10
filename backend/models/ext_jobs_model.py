@@ -10,6 +10,7 @@ def upsert_ext_job(
     company: str,
     location: str,
     experience: str,
+    resume_match_score: float,
     job_url: str,
     external_apply_url: str,
 ):
@@ -19,17 +20,18 @@ def upsert_ext_job(
     cur.execute(
         """
         INSERT INTO ext_jobs
-        (user_id, job_title, company, location, experience, job_url, external_apply_url)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        (user_id, job_title, company, location, experience, resume_match_score, job_url, external_apply_url)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(user_id, job_url) DO UPDATE SET
             job_title=excluded.job_title,
             company=excluded.company,
             location=excluded.location,
             experience=excluded.experience,
+            resume_match_score=excluded.resume_match_score,
             external_apply_url=excluded.external_apply_url,
             captured_at=CURRENT_TIMESTAMP
         """,
-        (user_id, job_title, company, location, experience, job_url, external_apply_url),
+        (user_id, job_title, company, location, experience, float(resume_match_score or 0.0), job_url, external_apply_url),
     )
     conn.commit()
     conn.close()
@@ -41,7 +43,7 @@ def get_ext_jobs(user_id: int, limit: int = 200):
     cur = conn.cursor()
     cur.execute(
         """
-        SELECT job_title, company, location, experience, job_url, external_apply_url, captured_at
+        SELECT job_title, company, location, experience, resume_match_score, job_url, external_apply_url, captured_at
         FROM ext_jobs
         WHERE user_id = ?
         ORDER BY id DESC

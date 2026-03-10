@@ -7,7 +7,7 @@
     <h3>Resume Analyzer</h3>
   </div>
   <div class="panel-card-body">
-    <p>Score is calculated from resume content, stored keywords, and job text.</p>
+    <p>Score is calculated from resume content, extracted key-skills, and job text (key-skills weighted higher).</p>
     <table>
       <thead>
         <tr>
@@ -15,7 +15,7 @@
           <th>Company</th>
           <th>Location</th>
           <th>Match Score</th>
-          <th>Matched Keywords</th>
+          <th>Matched Key-Skills</th>
         </tr>
       </thead>
       <tbody hx-get="/ui/resume-analyzer-rows" hx-trigger="load, every 10s" hx-swap="innerHTML">

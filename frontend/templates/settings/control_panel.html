@@ -28,7 +28,7 @@
         <label>Salary Expectation</label>
         <input type="text" name="salary" placeholder="12 LPA" value="{{ settings.salary }}">
 
-        <label>Keywords (comma separated)</label>
+        <label>Key-Skills (comma separated)</label>
         <textarea name="keywords" rows="3" placeholder="python, fastapi, sql">{{ settings.keywords }}</textarea>
 
         <label>Scan Mode</label>
@@ -43,6 +43,9 @@
 
         <label>Auto Apply Limit (1-20)</label>
         <input type="number" name="auto_apply_limit" min="1" max="20" value="{{ settings.auto_apply_limit or 10 }}">
+
+        <label>Max Job Age (days)</label>
+        <input type="number" name="max_job_age_days" min="1" max="90" value="{{ settings.max_job_age_days or 10 }}">
 
         <label>Upload Resume.txt</label>
         <input type="file" name="resume_file" accept=".txt,text/plain">
@@ -70,8 +73,9 @@
       <li>Location: <strong>{{ settings.preferred_location or "-" }}</strong></li>
       <li>Pages: <strong>{{ settings.pages_to_scrape or 5 }}</strong></li>
       <li>Auto Apply Limit: <strong>{{ settings.auto_apply_limit or 10 }}</strong></li>
+      <li>Max Job Age (days): <strong>{{ settings.max_job_age_days or 10 }}</strong></li>
       <li>Scan Mode: <strong>{{ settings.scan_mode or "basic" }}</strong></li>
-      <li>Keywords: <strong>{{ settings.keywords or "-" }}</strong></li>
+      <li>Key-Skills: <strong>{{ settings.keywords or "-" }}</strong></li>
     </ul>
   </div>
 </section>

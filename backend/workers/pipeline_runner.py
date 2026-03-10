@@ -33,6 +33,7 @@ def run_pipeline_task(
             f"companies: {', '.join(counts.get('top_companies', [])) or 'N/A'}; "
             f"fetch_filtered: {counts.get('fetch_filtered_count', 0)}; "
             f"applied: {counts.get('apply_summary', {}).get('applied_count', 0)}, "
+            f"external: {counts.get('apply_summary', {}).get('external_count', 0)}, "
             f"skipped: {counts.get('apply_summary', {}).get('skipped_count', 0)}, "
             f"failed: {counts.get('apply_summary', {}).get('failed_count', 0)}, "
             f"filtered_out: {counts.get('apply_summary', {}).get('filtered_out_count', 0)})"

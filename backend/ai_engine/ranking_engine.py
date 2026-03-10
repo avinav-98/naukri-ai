@@ -35,14 +35,14 @@ def rank_jobs(resume_text, user_id=None, limit=20, settings=None):
     if user_id is None:
         cursor.execute(
             """
-            SELECT job_title, company, location, experience, salary, job_description, resume_match_score, job_url
+            SELECT id, job_title, company, location, experience, salary, job_description, resume_match_score, job_url
             FROM jobs_directory
             """
         )
     else:
         cursor.execute(
             """
-            SELECT job_title, company, location, experience, salary, job_description, resume_match_score, job_url
+            SELECT id, job_title, company, location, experience, salary, job_description, resume_match_score, job_url
             FROM jobs_directory
             WHERE user_id = ?
             """,
@@ -55,22 +55,23 @@ def rank_jobs(resume_text, user_id=None, limit=20, settings=None):
 
     for job in jobs:
 
-        job_text = f"{job[0]} {job[1]} {job[2]} {job[3]} {job[4]} {job[5]}"
+        job_text = f"{job[1]} {job[2]} {job[3]} {job[4]} {job[5]} {job[6]}"
         semantic_score = max(0.0, float(calculate_match_score(resume_text, job_text)) * 100.0)
-        resume_match_score = float(job[6] or 0.0)
+        resume_match_score = float(job[7] or 0.0)
         score = round(score_by_mode(semantic_score, resume_match_score, scan_mode), 2)
         ranked.append(
             (
                 score,
                 {
-                    "job_title": job[0],
-                    "company": job[1],
-                    "location": job[2],
-                    "experience": job[3],
-                    "salary": job[4],
-                    "job_description": job[5],
+                    "job_id": job[0],
+                    "job_title": job[1],
+                    "company": job[2],
+                    "location": job[3],
+                    "experience": job[4],
+                    "salary": job[5],
+                    "job_description": job[6],
                     "resume_match_score": resume_match_score,
-                    "job_url": job[7],
+                    "job_url": job[8],
                 },
             )
         )

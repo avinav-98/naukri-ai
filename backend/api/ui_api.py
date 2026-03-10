@@ -276,7 +276,7 @@ def ext_jobs_rows(request: Request):
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT job_title, company, location, experience, job_url, external_apply_url, captured_at
+            SELECT job_title, company, location, experience, resume_match_score, job_url, external_apply_url, captured_at
             FROM ext_jobs
             WHERE user_id = ?
             ORDER BY id DESC
@@ -294,9 +294,10 @@ def ext_jobs_rows(request: Request):
             "company": r[1],
             "location": r[2],
             "experience": r[3],
-            "job_url": r[4],
-            "external_apply_url": r[5],
-            "captured_at": _to_utc_plus_530_text(r[6]),
+            "resume_match_score": r[4],
+            "job_url": r[5],
+            "external_apply_url": r[6],
+            "captured_at": _to_utc_plus_530_text(r[7]),
         }
         for r in rows
     ]
@@ -402,6 +403,7 @@ async def settings_save_action(
     scan_mode: str = Form("basic"),
     pages_to_scrape: int = Form(5),
     auto_apply_limit: int = Form(10),
+    max_job_age_days: int = Form(10),
     resume_file: UploadFile | None = File(default=None),
 ):
     user_id = request.state.user_id
@@ -420,6 +422,7 @@ async def settings_save_action(
             "scan_mode": scan_mode,
             "pages_to_scrape": pages_to_scrape,
             "auto_apply_limit": auto_apply_limit,
+            "max_job_age_days": max_job_age_days,
         },
         user_id=user_id,
     )
@@ -488,7 +491,7 @@ def reset_keywords(request: Request):
     except Exception:
         pass
 
-    payload = _status_payload(f"Reset complete. Removed {deleted} keywords.", kind="success")
+    payload = _status_payload(f"Reset complete. Removed {deleted} key-skills.", kind="success")
     return templates.TemplateResponse("partials/status_message.html", {"request": request, **payload})
 
 
@@ -502,5 +505,5 @@ def download_keywords(request: Request):
     return Response(
         content=out.getvalue(),
         media_type="text/plain",
-        headers={"Content-Disposition": "attachment; filename=keywords.txt"},
+        headers={"Content-Disposition": "attachment; filename=key-skills.txt"},
     )

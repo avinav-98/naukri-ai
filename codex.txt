@@ -714,3 +714,231 @@ currently my system has MINI CSS framework which is working perfectly.
 now the only thing i need is Javascript in my app. 
 before start run a quick system scan and get the latest update then start implementing 
 or if youn have any suggestion UI related ask and confirm with me.
+Required Fixes
+1. Update Dockerfile
+Modify the Dockerfile so the container has a virtual
+display server (Xvfb).
+Add installation:
+RUN apt-get update && apt-get install -y \
+    xvfb \
+    x11-utils \
+    xauth
+Add environment variable:
+ENV DISPLAY=:99
+2. Run application with Xvfb
+Update the Docker run command so the X server starts when
+the container starts, not during build.
+Replace:
+CMD ["uvicorn", "main:app",
+"--host", "0.0.0.0", "--port", "8000"]
+with:
+CMD ["xvfb-run", "--auto-servernum",
+"--server-args=-screen 0 1920x1080x24", "uvicorn",
+"main:app", "--host", "0.0.0.0",
+"--port", "8000"]
+
+3. Ensure Playwright launch config supports containers
+Check browser launch code and ensure it uses:
+browser = playwright.chromium.launch(
+    headless=False,
+    args=["--no-sandbox", "--disable-dev-shm-usage"]
+)
+4. Ensure popup handling still works
+The automation must still support popup windows
+triggered by the application.
+Verify the code handles popups correctly using:
+with page.expect_popup() as popup_info:
+
+    page.click(selector)
+
+
+
+popup = popup_info.value
+
+popup.wait_for_load_state()
+
+
+Do not remove popup automation logic.
+5. Validate Playwright browser installation
+Ensure the Dockerfile includes:
+RUN playwright install chromium
+and if missing add:
+RUN playwright install-deps
+
+Expected Result
+After the fix:
+Docker
+     container starts successfully
+Playwright
+     launches headed Chromium
+Xvfb
+     provides virtual display
+Popup
+     browser automation works
+FastAPI
+     endpoint executes browser automation without crashing
+
+Output Required From Codex
+
+Provide:
+Corrected
+     Dockerfile
+Any required
+     changes to Playwright launch code
+Explanation
+     of what was fixed
+
+
+Fix Ext Jobs Links + Restore Auto Apply
+Perform a full system scan and then update the job pipeline logic without breaking existing modules.
+________________________________________
+1. EXT JOBS TABLE STRUCTURE
+The ExtJobs table must clearly store two different URLs.
+Fields:
+Job Title
+Company Name
+Location
+Experience
+Job Link
+External Apply Link
+Date Captured
+User ID
+Meaning of fields:
+Job Link
+Original Naukri job page
+Used to reopen the job inside the Naukri.com portal.
+External Apply Link
+Redirect URL to company career page
+This is where the user must apply manually.
+________________________________________
+2. EXTERNAL JOB DETECTION
+During pipeline apply stage:
+Steps:
+open job page
+detect apply button
+If button text contains:
+Apply on company site
+Apply on company website
+Then:
+capture redirect URL
+save job to ExtJobs
+skip auto apply
+Populate:
+Job Link → Naukri job URL
+External Apply Link → redirected company URL
+________________________________________
+3. FIX AUTO APPLY PIPELINE
+Currently jobs are detected but auto apply is not executing.
+Restore apply logic.
+Correct flow:
+Fetch Jobs
+↓
+Analyze / Rank
+↓
+Check Apply Type
+Decision:
+External Job → save to ExtJobs
+Internal Job → proceed to auto apply
+________________________________________
+4. INTERNAL APPLY LOGIC
+For internal jobs:
+Use Playwright automation to submit the application.
+Steps:
+open job page
+click Apply / Easy Apply
+complete form if required
+submit application
+After successful submission:
+status = Applied
+store job in applied_jobs table
+________________________________________
+5. STATUS UPDATE FIX
+Ensure job status is updated correctly.
+Possible statuses:
+Applied
+Skipped
+Failed
+Filtered Out
+External
+Only mark Applied when submission succeeds.
+________________________________________
+6. DEBUGGING CHECK
+Add logging to identify where apply fails.
+Log:
+job_id
+job_title
+apply_button_type
+apply_result
+error_message
+Ensure the pipeline continues even if one job fails.
+________________________________________
+7. EXPECTED RESULT
+System should:
+• store correct Naukri job links
+• store correct external company links
+• detect external apply jobs correctly
+• resume working auto-apply automation
+• update applied jobs page correctly
+
+Replace Keywords with Key-Skills
+Update the job analysis and keyword extraction logic.
+The system currently extracts keywords from Job Description.
+This logic must be changed to use Key Skills instead.
+________________________________________
+1. DATA SOURCE CHANGE
+Instead of extracting keywords from:
+Job Description
+Extract them from the Key Skills section of the job listing.
+Key Skills are usually displayed on job pages as:
+Key Skills
+Key Skills Required
+Skills
+Scrape the Key Skills field directly if available.
+________________________________________
+2. RENAME MODEL DISPLAY NAME
+The existing Keywords module should now display:
+Key-Skills
+UI changes:
+Keywords page title → Key-Skills
+Keywords column → Key-Skills
+Keywords export button → Download Key-Skills
+________________________________________
+3. DATABASE COMPATIBILITY
+Do not break existing database structure.
+If the current table is:
+keywords
+Keep the table name for compatibility, but internally treat it as Key-Skills data.
+Column values should now store:
+Key Skills extracted from job listing
+________________________________________
+4. PIPELINE UPDATE
+During job scanning:
+scrape job page
+↓
+extract Key Skills
+↓
+store in keywords table
+↓
+use skills for Resume Analyzer scoring
+________________________________________
+5. RESUME ANALYZER UPDATE
+Resume matching should now compare:
+resume.txt
+Key Skills
+job description
+Key Skills should have higher priority weight than generic job description text.
+________________________________________
+6. KEY-SKILLS PAGE FEATURES
+The Key-Skills page must allow users to:
+view extracted skills
+copy skills
+download skills as .txt
+Button label:
+Download Key-Skills (.txt)
+________________________________________
+EXPECTED RESULT
+The system should now:
+• extract Key Skills instead of keywords
+• store them in the existing keywords table
+• display them as Key-Skills in UI
+• use them for resume-job matching

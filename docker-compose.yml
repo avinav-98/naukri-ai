@@ -1,0 +1,56 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: naukri-app
+    ports:
+      - "8000:8000"
+    shm_size: "1gb"
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      PIPELINE_EXECUTOR: celery
+      PLAYWRIGHT_HEADLESS: "true"
+      JWT_SECRET: naukri_auto_apply_secret_min_32_chars_2026
+      NAUKRI_CREDENTIALS_SECRET: change-this-in-production
+    volumes:
+      - ./database:/app/database
+      - ./storage:/app/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: naukri-worker
+    command: celery -A backend.workers.celery_app.celery_app worker --loglevel=info --pool=threads --concurrency=1
+    shm_size: "1gb"
+    environment:
+      CELERY_BROKER_URL: redis://redis:6379/0
+      CELERY_RESULT_BACKEND: redis://redis:6379/1
+      PLAYWRIGHT_HEADLESS: "true"
+      JWT_SECRET: naukri_auto_apply_secret_min_32_chars_2026
+      NAUKRI_CREDENTIALS_SECRET: change-this-in-production
+    volumes:
+      - ./database:/app/database
+      - ./storage:/app/storage
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    container_name: naukri-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped

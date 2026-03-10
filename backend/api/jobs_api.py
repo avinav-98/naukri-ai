@@ -156,7 +156,7 @@ def ext_jobs(request: Request):
         cur = conn.cursor()
         cur.execute(
             """
-            SELECT job_title, company, location, experience, job_url, external_apply_url, captured_at
+            SELECT job_title, company, location, experience, resume_match_score, job_url, external_apply_url, captured_at
             FROM ext_jobs
             WHERE user_id = ?
             ORDER BY id DESC
@@ -175,9 +175,10 @@ def ext_jobs(request: Request):
             "company": r[1],
             "location": r[2],
             "experience": r[3],
-            "job_url": r[4],
-            "external_apply_url": r[5],
-            "captured_at": r[6],
+            "resume_match_score": r[4],
+            "job_url": r[5],
+            "external_apply_url": r[6],
+            "captured_at": r[7],
         }
         for r in rows
     ]

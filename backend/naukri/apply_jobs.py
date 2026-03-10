@@ -5,6 +5,8 @@ from datetime import datetime
 from pathlib import Path
 from urllib.parse import urlparse
 
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
 from backend.automation.browser_manager import get_browser
 from backend.automation.session_manager import load_session
 from backend.config import DATABASE_PATHS
@@ -128,6 +130,73 @@ def _find_apply_control(page):
     return None
 
 
+def _attempt_internal_submit(page) -> bool:
+    submit_selectors = [
+        "button:has-text('Submit application')",
+        "button:has-text('Submit')",
+        "button:has-text('Send Application')",
+        "button:has-text('Apply')",
+        "input[type='submit']",
+    ]
+    for sel in submit_selectors:
+        try:
+            btn = page.query_selector(sel)
+            if not btn:
+                continue
+            btn.click(timeout=4000, force=True)
+            page.wait_for_timeout(1500)
+            return True
+        except Exception:
+            continue
+    return False
+
+
+def _click_apply_and_capture_external(page, context, locator):
+    before_pages = len(context.pages)
+    popup = None
+
+    try:
+        with page.expect_popup(timeout=4000) as popup_info:
+            locator.click(timeout=8000, force=True)
+        popup = popup_info.value
+        popup.wait_for_load_state()
+    except PlaywrightTimeoutError:
+        popup = None
+
+    try:
+        page.wait_for_load_state("load", timeout=12000)
+    except Exception:
+        page.wait_for_timeout(2500)
+
+    if popup is None and len(context.pages) > before_pages:
+        popup = context.pages[-1]
+
+    popup_url = ""
+    if popup is not None:
+        try:
+            popup.wait_for_load_state("load", timeout=10000)
+        except Exception:
+            pass
+        popup_url = popup.url or ""
+        try:
+            popup.close()
+        except Exception:
+            pass
+
+    current_url = page.url or ""
+    external_url = ""
+    if popup_url and not _is_naukri_url(popup_url):
+        external_url = popup_url
+    elif current_url and not _is_naukri_url(current_url):
+        external_url = current_url
+
+    return {
+        "external_url": external_url,
+        "popup_url": popup_url,
+        "current_url": current_url,
+    }
+
+
 def save_applied_job(user_id, job_title, company, location, experience, job_url):
     conn = sqlite3.connect(DATABASE_PATHS["applied"])
     ensure_applied_jobs_schema(conn)
@@ -151,13 +220,23 @@ def save_applied_job(user_id, job_title, company, location, experience, job_url)
     conn.close()
 
 
-def save_external_job(user_id, job_title, company, location, experience, job_url, external_apply_url):
+def save_external_job(
+    user_id,
+    job_title,
+    company,
+    location,
+    experience,
+    resume_match_score,
+    job_url,
+    external_apply_url,
+):
     upsert_ext_job(
         user_id=user_id,
         job_title=job_title,
         company=company,
         location=location,
         experience=experience,
+        resume_match_score=resume_match_score,
         job_url=job_url,
         external_apply_url=external_apply_url,
     )
@@ -184,7 +263,7 @@ def save_job_status(user_id, job_title, company, location, job_url, status):
     conn.close()
 
 
-def apply_to_job(user_id, job_title, company, location, experience, job_url):
+def apply_to_job(user_id, job_title, company, location, experience, job_url, job_id=None, resume_match_score=0.0):
     browser = get_browser()
     context = browser.new_context()
     page = context.new_page()
@@ -199,75 +278,133 @@ def apply_to_job(user_id, job_title, company, location, experience, job_url):
         page.wait_for_timeout(random.randint(2000, 3500))
 
         apply_meta = _find_apply_control(page)
+        button_type = "unknown"
 
         # Step 1: button text / type classification
+        if apply_meta:
+            button_type = "external" if apply_meta["is_external_button"] else "internal"
+
         if apply_meta and apply_meta["is_external_button"]:
-            external_url = apply_meta["href"] or page.url
-            save_external_job(user_id, job_title, company, location, experience, job_url, external_url)
-            save_job_status(user_id, job_title, company, location, job_url, "skipped")
+            click_info = _click_apply_and_capture_external(page, context, apply_meta["locator"])
+            external_url = click_info["external_url"]
+            if not external_url:
+                href = apply_meta.get("href") or ""
+                if href and not _is_naukri_url(href):
+                    external_url = href
+            if not external_url:
+                external_url = click_info["popup_url"] or click_info["current_url"] or (apply_meta.get("href") or "")
+            save_external_job(
+                user_id,
+                job_title,
+                company,
+                location,
+                experience,
+                resume_match_score,
+                job_url,
+                external_url,
+            )
+            save_job_status(user_id, job_title, company, location, job_url, "external")
             log_activity("External Apply", f"{job_title} | external button", user_id=user_id)
-            return {"status": "skipped", "external_apply_url": external_url}
+            return {
+                "status": "external",
+                "external_apply_url": external_url,
+                "apply_button_type": button_type,
+                "job_id": job_id,
+                "error_message": "",
+            }
 
         if not apply_meta:
             if _looks_like_applied(page):
                 save_applied_job(user_id, job_title, company, location, experience, job_url)
                 save_job_status(user_id, job_title, company, location, job_url, "applied")
                 log_activity("Job Applied", f"{job_title} | already applied", user_id=user_id)
-                return {"status": "applied"}
+                return {
+                    "status": "applied",
+                    "apply_button_type": "none",
+                    "job_id": job_id,
+                    "error_message": "",
+                }
 
             save_job_status(user_id, job_title, company, location, job_url, "filtered_out")
-            return {"status": "filtered_out", "reason": "apply_control_not_found"}
+            return {
+                "status": "filtered_out",
+                "reason": "apply_control_not_found",
+                "apply_button_type": "none",
+                "job_id": job_id,
+                "error_message": "apply_control_not_found",
+            }
 
-        before_pages = len(context.pages)
-        apply_meta["locator"].click(timeout=8000, force=True)
-        try:
-            page.wait_for_load_state("load", timeout=12000)
-        except Exception:
-            page.wait_for_timeout(2500)
-
-        # Step 2: redirect / popup URL detection
-        external_url = ""
-        if len(context.pages) > before_pages:
-            popup = context.pages[-1]
-            try:
-                popup.wait_for_load_state("load", timeout=10000)
-            except Exception:
-                pass
-            popup_url = popup.url or ""
-            if popup_url and not _is_naukri_url(popup_url):
-                external_url = popup_url
-            try:
-                popup.close()
-            except Exception:
-                pass
-
-        # Step 3: final domain detection
-        current_url = page.url or ""
-        if not external_url and current_url and not _is_naukri_url(current_url):
-            external_url = current_url
+        click_info = _click_apply_and_capture_external(page, context, apply_meta["locator"])
+        external_url = click_info["external_url"]
+        if not external_url:
+            href = apply_meta.get("href") or ""
+            if href and not _is_naukri_url(href):
+                external_url = href
 
         if external_url:
-            save_external_job(user_id, job_title, company, location, experience, job_url, external_url)
-            save_job_status(user_id, job_title, company, location, job_url, "skipped")
+            save_external_job(
+                user_id,
+                job_title,
+                company,
+                location,
+                experience,
+                resume_match_score,
+                job_url,
+                external_url,
+            )
+            save_job_status(user_id, job_title, company, location, job_url, "external")
             log_activity("External Apply", f"{job_title} | redirect: {external_url}", user_id=user_id)
-            return {"status": "skipped", "external_apply_url": external_url}
+            return {
+                "status": "external",
+                "external_apply_url": external_url,
+                "apply_button_type": "external",
+                "job_id": job_id,
+                "error_message": "",
+            }
+
+        # Step 3: attempt internal submit when a form step is present.
+        if not _looks_like_applied(page):
+            _attempt_internal_submit(page)
+            try:
+                page.wait_for_timeout(1500)
+            except Exception:
+                pass
 
         if _looks_like_applied(page):
             save_applied_job(user_id, job_title, company, location, experience, job_url)
             save_job_status(user_id, job_title, company, location, job_url, "applied")
             log_activity("Job Applied", job_title, user_id=user_id)
-            return {"status": "applied"}
+            return {
+                "status": "applied",
+                "apply_button_type": button_type,
+                "job_id": job_id,
+                "error_message": "",
+            }
 
         if _looks_like_failure(page):
             screenshot = _capture_error_screenshot(page, user_id, job_title)
             save_job_status(user_id, job_title, company, location, job_url, "failed")
             log_activity("Apply Failed", f"{job_title} | UI error | {screenshot}", user_id=user_id, level="error")
-            return {"status": "failed", "reason": "ui_failure", "screenshot": screenshot}
+            return {
+                "status": "failed",
+                "reason": "ui_failure",
+                "screenshot": screenshot,
+                "apply_button_type": button_type,
+                "job_id": job_id,
+                "error_message": "ui_failure",
+            }
 
         screenshot = _capture_error_screenshot(page, user_id, job_title)
         save_job_status(user_id, job_title, company, location, job_url, "failed")
         log_activity("Apply Failed", f"{job_title} | unconfirmed result | {screenshot}", user_id=user_id, level="error")
-        return {"status": "failed", "reason": "unconfirmed_result", "screenshot": screenshot}
+        return {
+            "status": "failed",
+            "reason": "unconfirmed_result",
+            "screenshot": screenshot,
+            "apply_button_type": button_type,
+            "job_id": job_id,
+            "error_message": "unconfirmed_result",
+        }
 
     except Exception as exc:
         screenshot = _capture_error_screenshot(page, user_id, job_title)
@@ -278,7 +415,15 @@ def apply_to_job(user_id, job_title, company, location, experience, job_url):
             user_id=user_id,
             level="error",
         )
-        return {"status": "failed", "reason": "exception", "error": str(exc), "screenshot": screenshot}
+        return {
+            "status": "failed",
+            "reason": "exception",
+            "error": str(exc),
+            "screenshot": screenshot,
+            "apply_button_type": "unknown",
+            "job_id": job_id,
+            "error_message": str(exc),
+        }
     finally:
         try:
             context.close()

@@ -174,6 +174,7 @@ def ensure_jobs_directory_schema(conn: sqlite3.Connection):
             experience TEXT,
             salary TEXT,
             job_description TEXT,
+            key_skills_text TEXT DEFAULT '',
             resume_match_score REAL DEFAULT 0,
             posted_date_text TEXT,
             posted_ts INTEGER DEFAULT 0,
@@ -189,6 +190,7 @@ def ensure_jobs_directory_schema(conn: sqlite3.Connection):
     _ensure_column(conn, "jobs_directory", "experience TEXT")
     _ensure_column(conn, "jobs_directory", "salary TEXT")
     _ensure_column(conn, "jobs_directory", "job_description TEXT")
+    _ensure_column(conn, "jobs_directory", "key_skills_text TEXT DEFAULT ''")
     _ensure_column(conn, "jobs_directory", "resume_match_score REAL DEFAULT 0")
     _ensure_column(conn, "jobs_directory", "posted_date_text TEXT")
     _ensure_column(conn, "jobs_directory", "posted_ts INTEGER DEFAULT 0")
@@ -349,6 +351,7 @@ def ensure_ext_jobs_schema(conn: sqlite3.Connection):
             company TEXT,
             location TEXT,
             experience TEXT,
+            resume_match_score REAL DEFAULT 0,
             job_url TEXT,
             external_apply_url TEXT,
             captured_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -357,6 +360,7 @@ def ensure_ext_jobs_schema(conn: sqlite3.Connection):
     )
     _ensure_column(conn, "ext_jobs", "user_id INTEGER NOT NULL DEFAULT 1")
     _ensure_column(conn, "ext_jobs", "experience TEXT")
+    _ensure_column(conn, "ext_jobs", "resume_match_score REAL DEFAULT 0")
     _ensure_column(conn, "ext_jobs", "external_apply_url TEXT")
     conn.execute(
         """

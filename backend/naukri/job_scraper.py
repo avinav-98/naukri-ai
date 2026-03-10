@@ -60,6 +60,28 @@ def _posted_text_to_ts(posted_text: str) -> int:
     return int(now.timestamp())
 
 
+def _posted_age_days(posted_text: str):
+    text = (posted_text or "").strip().lower()
+    if not text:
+        return None
+    if "week" in text or "month" in text:
+        return None
+    if "just now" in text or "today" in text:
+        return 0
+    if "yesterday" in text:
+        return 1
+    if "hour" in text or "minute" in text:
+        return 0
+
+    digits = "".join(ch for ch in text if ch.isdigit())
+    if "day" in text and digits:
+        try:
+            return int(digits)
+        except Exception:
+            return None
+    return None
+
+
 def _dedupe_jobs(jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
     by_url: dict[str, dict[str, Any]] = {}
     without_url: list[dict[str, Any]] = []
@@ -203,22 +225,109 @@ def _go_to_search_results(page, search_query: str, settings: dict[str, Any] | No
         page.wait_for_timeout(2500)
 
 
-def _extract_full_description(context, job_url: str) -> str:
+def _split_skill_tokens(raw_text: str) -> list[str]:
+    items = []
+    for token in raw_text.replace("\n", ",").replace("|", ",").split(","):
+        value = token.strip()
+        if value:
+            items.append(value)
+    unique = []
+    seen = set()
+    for item in items:
+        low = item.lower()
+        if low in seen:
+            continue
+        seen.add(low)
+        unique.append(item)
+    return unique
+
+
+def _extract_key_skills_from_card(card) -> list[str]:
+    selectors = [
+        ".tags-gt li",
+        ".tags-gt .tag-li",
+        "ul.tags-gt li",
+        ".key-skill li",
+        ".key-skill span",
+        "a[title][class*='tag']",
+    ]
+    skills = []
+    for sel in selectors:
+        try:
+            nodes = card.query_selector_all(sel)
+        except Exception:
+            nodes = []
+        for node in nodes:
+            text = _text_or_empty(node)
+            if text and len(text) <= 80:
+                skills.append(text)
+    merged = _split_skill_tokens(",".join(skills))
+    return merged[:25]
+
+
+def _extract_job_details(context, job_url: str) -> dict[str, Any]:
     if not job_url:
-        return ""
+        return {"description": "", "key_skills": [], "posted_text": ""}
     detail = context.new_page()
     try:
         detail.goto(job_url, timeout=30000)
         detail.wait_for_timeout(1500)
-        node = (
+        desc_node = (
             detail.query_selector(".styles_JDC__dang-inner-html")
             or detail.query_selector(".job-desc")
             or detail.query_selector(".dang-inner-html")
             or detail.query_selector("section:has-text('Job description')")
         )
-        return _text_or_empty(node)
+        description = _text_or_empty(desc_node)
+
+        skill_nodes = []
+        for sel in [
+            "section:has-text('Key Skills') a",
+            "section:has-text('Key Skills') span",
+            "div:has-text('Key Skills') a",
+            "div:has-text('Key Skills') span",
+            "section:has-text('Skills Required') a",
+            "section:has-text('Skills Required') span",
+            "div:has-text('Skills') a",
+            "div:has-text('Skills') span",
+        ]:
+            try:
+                skill_nodes.extend(detail.query_selector_all(sel))
+            except Exception:
+                continue
+
+        key_skills = []
+        for node in skill_nodes:
+            text = _text_or_empty(node)
+            if text and len(text) <= 80:
+                key_skills.append(text)
+
+        if not key_skills:
+            # Fallback: parse the section text if chips/anchors are not directly available.
+            section = (
+                detail.query_selector("section:has-text('Key Skills')")
+                or detail.query_selector("div:has-text('Key Skills')")
+                or detail.query_selector("section:has-text('Skills Required')")
+                or detail.query_selector("div:has-text('Skills Required')")
+            )
+            section_text = _text_or_empty(section)
+            if section_text:
+                key_skills = _split_skill_tokens(section_text)
+
+        posted_node = (
+            detail.query_selector("span:has-text('Posted')")
+            or detail.query_selector("div:has-text('Posted')")
+            or detail.query_selector("span:has-text('posted')")
+        )
+        posted_text = _text_or_empty(posted_node)
+
+        return {
+            "description": description,
+            "key_skills": _split_skill_tokens(",".join(key_skills))[:25],
+            "posted_text": posted_text,
+        }
     except Exception:
-        return ""
+        return {"description": "", "key_skills": [], "posted_text": ""}
     finally:
         detail.close()
 
@@ -233,6 +342,11 @@ def scrape_jobs(
 ):
     browser = get_browser()
     context = browser.new_context()
+    try:
+        max_job_age_days = int((filter_settings or {}).get("max_job_age_days", 10) or 10)
+    except Exception:
+        max_job_age_days = 10
+    max_job_age_days = max(1, min(90, max_job_age_days))
 
     session_loaded = load_session(context, user_id)
     page = context.new_page()
@@ -279,10 +393,30 @@ def scrape_jobs(
             salary_text = _text_or_empty(salary)
             description_text = _text_or_empty(description)
             posted_text = _text_or_empty(posted_node)
-            posted_ts = _posted_text_to_ts(posted_text)
+            posted_text_lc = (posted_text or "").strip().lower()
+            if "week" in posted_text_lc or "month" in posted_text_lc:
+                filtered_out += 1
+                continue
+            posted_days = _posted_age_days(posted_text)
 
+            key_skills = _extract_key_skills_from_card(card)
+            details = {"description": "", "key_skills": [], "posted_text": ""}
+            if len(description_text) < 40 or not key_skills or posted_days is None:
+                details = _extract_job_details(context, job_url)
             if len(description_text) < 40:
-                description_text = _extract_full_description(context, job_url) or description_text
+                description_text = details.get("description", "") or description_text
+            if not key_skills:
+                key_skills = details.get("key_skills", [])
+            if posted_days is None:
+                posted_text = details.get("posted_text", "") or posted_text
+                posted_days = _posted_age_days(posted_text)
+
+            # Freshness gate: only keep jobs posted within configured day limit.
+            if posted_days is None or posted_days > max_job_age_days:
+                filtered_out += 1
+                continue
+
+            posted_ts = _posted_text_to_ts(posted_text)
 
             if company_name.lower() == job_title.lower():
                 alt_company = _first_match(card, ["a.subTitle", "a.comp-name", "span.comp-name"])
@@ -296,6 +430,8 @@ def scrape_jobs(
                 "experience": experience_text,
                 "salary": salary_text,
                 "description": description_text,
+                "key_skills": key_skills,
+                "key_skills_text": ", ".join(key_skills),
                 "posted_date_text": posted_text,
                 "posted_ts": posted_ts,
                 "url": job_url,
@@ -307,7 +443,7 @@ def scrape_jobs(
             candidate["extracted_keywords"] = analyzer.get("extracted_keywords", [])
             if not candidate["extracted_keywords"]:
                 candidate["extracted_keywords"] = extract_meaningful_keywords(
-                    f"{job_title} {description_text}", limit=30
+                    f"{candidate.get('key_skills_text', '')} {job_title} {description_text}", limit=30
                 )
             for kw in candidate["extracted_keywords"]:
                 extracted_keywords_all.add(kw)
@@ -354,6 +490,7 @@ def save_jobs(jobs):
             job.get("experience", ""),
             job.get("salary", ""),
             job.get("description", ""),
+            job.get("key_skills_text", ""),
             float(job.get("resume_match_score", 0.0)),
             job.get("posted_date_text", ""),
             int(job.get("posted_ts", 0)),
@@ -366,9 +503,9 @@ def save_jobs(jobs):
         cursor.execute(
             """
             INSERT INTO jobs_directory
-            (user_id, job_title, company, location, experience, salary, job_description, resume_match_score,
+            (user_id, job_title, company, location, experience, salary, job_description, key_skills_text, resume_match_score,
              posted_date_text, posted_ts, normalized_title, normalized_company, normalized_location, job_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT(user_id, job_url) DO UPDATE SET
                 job_title = excluded.job_title,
                 company = excluded.company,
@@ -376,6 +513,7 @@ def save_jobs(jobs):
                 experience = excluded.experience,
                 salary = excluded.salary,
                 job_description = excluded.job_description,
+                key_skills_text = excluded.key_skills_text,
                 resume_match_score = excluded.resume_match_score,
                 posted_date_text = excluded.posted_date_text,
                 posted_ts = CASE
@@ -394,9 +532,9 @@ def save_jobs(jobs):
             cursor.execute(
                 """
                 INSERT INTO jobs_directory
-                (user_id, job_title, company, location, experience, salary, job_description, resume_match_score,
+                (user_id, job_title, company, location, experience, salary, job_description, key_skills_text, resume_match_score,
                  posted_date_text, posted_ts, normalized_title, normalized_company, normalized_location, job_url)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ON CONFLICT(user_id, normalized_title, normalized_company, normalized_location) DO UPDATE SET
                     job_title = excluded.job_title,
                     company = excluded.company,
@@ -404,6 +542,7 @@ def save_jobs(jobs):
                     experience = excluded.experience,
                     salary = excluded.salary,
                     job_description = excluded.job_description,
+                    key_skills_text = excluded.key_skills_text,
                     resume_match_score = excluded.resume_match_score,
                     posted_date_text = CASE
                         WHEN coalesce(excluded.posted_ts, 0) >= coalesce(jobs_directory.posted_ts, 0) THEN excluded.posted_date_text

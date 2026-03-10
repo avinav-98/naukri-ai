@@ -4,17 +4,17 @@
 
 <section class="panel-card table-shell">
   <div class="panel-card-header" style="display:flex;justify-content:space-between;align-items:center;">
-    <h3>Keywords</h3>
+    <h3>Key-Skills</h3>
     <div style="display:flex;gap:8px;align-items:center;">
       <a
         class="mui-btn btn-download"
         href="/ui/keywords-download"
-        title="Download keywords (.txt)"
-        aria-label="Download keywords"
+        title="Download Key-Skills (.txt)"
+        aria-label="Download Key-Skills"
         style="display:inline-flex;align-items:center;gap:6px;"
       >
         <span aria-hidden="true">⬇</span>
-        <span>Download</span>
+        <span>Download Key-Skills (.txt)</span>
       </a>
       <button
         class="mui-btn mui-btn--danger"
@@ -23,7 +23,7 @@
         hx-swap="innerHTML"
         hx-on::after-request="document.body.dispatchEvent(new Event('refreshKeywords'))"
       >
-        Reset Keywords
+        Reset Key-Skills
       </button>
     </div>
   </div>
@@ -32,14 +32,14 @@
       {% include "partials/status_message.html" with context %}
     </div>
     <div style="display:flex;gap:8px;align-items:center;margin-bottom:10px;">
-      <button class="mui-btn" onclick="copyKeywords()">Copy Keywords</button>
+      <button class="mui-btn" onclick="copyKeywords()">Copy Key-Skills</button>
       <span id="copyState" style="color:#64748b;font-size:0.9rem;"></span>
     </div>
     <table>
       <thead>
         <tr>
           <th>#</th>
-          <th>Keyword</th>
+          <th>Key-Skill</th>
         </tr>
       </thead>
       <tbody id="keywordsBody" hx-get="/ui/keywords-rows" hx-trigger="load, every 20s, refreshKeywords from:body" hx-swap="innerHTML">

@@ -30,6 +30,7 @@ def init_settings_table():
             scan_mode TEXT DEFAULT 'basic',
             pages_to_scrape INTEGER DEFAULT 5,
             auto_apply_limit INTEGER DEFAULT 10,
+            max_job_age_days INTEGER DEFAULT 10,
             updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
         """
@@ -52,6 +53,8 @@ def init_settings_table():
         cursor.execute("ALTER TABLE settings ADD COLUMN keywords TEXT DEFAULT ''")
     if "scan_mode" not in cols:
         cursor.execute("ALTER TABLE settings ADD COLUMN scan_mode TEXT DEFAULT 'basic'")
+    if "max_job_age_days" not in cols:
+        cursor.execute("ALTER TABLE settings ADD COLUMN max_job_age_days INTEGER DEFAULT 10")
     conn.commit()
     conn.close()
 
@@ -118,6 +121,7 @@ def save_settings(data: dict, user_id: int):
     init_settings_table()
     pages_to_scrape = _bounded_int(data.get("pages_to_scrape", 5), default=5)
     auto_apply_limit = _bounded_int(data.get("auto_apply_limit", 10), default=10)
+    max_job_age_days = _bounded_int(data.get("max_job_age_days", 10), default=10, min_v=1, max_v=90)
     keywords_raw = data.get("keywords", "") or ""
     scan_mode = (data.get("scan_mode", "basic") or "basic").strip().lower()
     if scan_mode not in {"basic", "advance", "extreme"}:
@@ -130,9 +134,9 @@ def save_settings(data: dict, user_id: int):
         """
         INSERT INTO settings (
             user_id, job_role, preferred_location, experience, salary, keywords, scan_mode,
-            pages_to_scrape, auto_apply_limit
+            pages_to_scrape, auto_apply_limit, max_job_age_days
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             user_id,
@@ -144,6 +148,7 @@ def save_settings(data: dict, user_id: int):
             scan_mode,
             pages_to_scrape,
             auto_apply_limit,
+            max_job_age_days,
         ),
     )
     conn.commit()
@@ -158,7 +163,7 @@ def get_settings(user_id: int):
     cursor.execute(
         """
         SELECT job_role, preferred_location, experience, salary, keywords, scan_mode,
-               pages_to_scrape, auto_apply_limit
+               pages_to_scrape, auto_apply_limit, max_job_age_days
         FROM settings
         WHERE user_id = ?
         ORDER BY id DESC
@@ -179,6 +184,7 @@ def get_settings(user_id: int):
             "scan_mode": "basic",
             "pages_to_scrape": 5,
             "auto_apply_limit": 10,
+            "max_job_age_days": 10,
         }
 
     return {
@@ -190,4 +196,5 @@ def get_settings(user_id: int):
         "scan_mode": row[5] or "basic",
         "pages_to_scrape": row[6],
         "auto_apply_limit": row[7],
+        "max_job_age_days": row[8] if len(row) > 8 and row[8] is not None else 10,
     }

@@ -1,9 +1,16 @@
 from threading import local
+import os
 
 from backend.automation.playwright_setup import get_playwright
 
 
 _state = local()
+
+
+def _is_headless() -> bool:
+    # Default to headless for Docker/server environments.
+    value = (os.getenv("PLAYWRIGHT_HEADLESS", "true") or "true").strip().lower()
+    return value not in {"0", "false", "no", "off"}
 
 
 def get_browser():
@@ -13,7 +20,16 @@ def get_browser():
     browser = getattr(_state, "browser", None)
     if browser is None:
         playwright = get_playwright()
-        browser = playwright.chromium.launch(headless=False, slow_mo=50)
+        browser = playwright.chromium.launch(
+            headless=_is_headless(),
+            args=[
+                "--no-sandbox",
+                "--disable-setuid-sandbox",
+                "--disable-dev-shm-usage",
+                "--disable-gpu",
+                "--disable-blink-features=AutomationControlled",
+            ],
+        )
         _state.browser = browser
     return browser
 

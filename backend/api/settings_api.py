@@ -19,6 +19,7 @@ async def update_settings(
     scan_mode: str = Form("basic"),
     pages_to_scrape: int = Form(5),
     auto_apply_limit: int = Form(10),
+    max_job_age_days: int = Form(10),
     resume_file: UploadFile | None = File(default=None),
 ):
     user_id = request.state.user_id
@@ -37,6 +38,7 @@ async def update_settings(
             "scan_mode": scan_mode,
             "pages_to_scrape": pages_to_scrape,
             "auto_apply_limit": auto_apply_limit,
+            "max_job_age_days": max_job_age_days,
         },
         user_id=user_id,
     )

@@ -229,6 +229,43 @@ def applied_jobs_rows(request: Request):
     return templates.TemplateResponse("partials/applied_jobs_rows.html", {"request": request, "jobs": jobs})
 
 
+@router.delete("/applied-jobs-reset", response_class=HTMLResponse)
+def reset_applied_jobs(request: Request):
+    user_id = request.state.user_id
+    deleted = 0
+
+    try:
+        conn = sqlite3.connect(DATABASE_PATHS["applied"])
+        ensure_applied_jobs_schema(conn)
+        cur = conn.cursor()
+        cur.execute("DELETE FROM applied_jobs WHERE user_id = ?", (user_id,))
+        deleted += int(cur.rowcount or 0)
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+    try:
+        conn = sqlite3.connect(DATABASE_PATHS["standard"])
+        ensure_standard_jobs_schema(conn)
+        cur = conn.cursor()
+        cur.execute(
+            """
+            UPDATE standard_jobs
+            SET status = 'pending'
+            WHERE user_id = ? AND lower(status) = 'applied'
+            """,
+            (user_id,),
+        )
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+    payload = _status_payload(f"Reset complete. Removed {deleted} applied records.", kind="success")
+    return templates.TemplateResponse("partials/status_message.html", {"request": request, **payload})
+
+
 @router.get("/ext-jobs-rows", response_class=HTMLResponse)
 def ext_jobs_rows(request: Request):
     user_id = request.state.user_id
@@ -264,6 +301,26 @@ def ext_jobs_rows(request: Request):
         for r in rows
     ]
     return templates.TemplateResponse("partials/ext_jobs_rows.html", {"request": request, "jobs": jobs})
+
+
+@router.delete("/ext-jobs-reset", response_class=HTMLResponse)
+def reset_ext_jobs(request: Request):
+    user_id = request.state.user_id
+    deleted = 0
+
+    try:
+        conn = sqlite3.connect(DATABASE_PATHS["ext"])
+        ensure_ext_jobs_schema(conn)
+        cur = conn.cursor()
+        cur.execute("DELETE FROM ext_jobs WHERE user_id = ?", (user_id,))
+        deleted = int(cur.rowcount or 0)
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+    payload = _status_payload(f"Reset complete. Removed {deleted} external job records.", kind="success")
+    return templates.TemplateResponse("partials/status_message.html", {"request": request, **payload})
 
 
 @router.get("/pipeline-runs-rows", response_class=HTMLResponse)
@@ -415,6 +472,24 @@ def keywords_rows(request: Request):
     user_id = request.state.user_id
     keywords = get_keywords(user_id=user_id)
     return templates.TemplateResponse("partials/keywords_rows.html", {"request": request, "keywords": keywords})
+
+
+@router.delete("/keywords-reset", response_class=HTMLResponse)
+def reset_keywords(request: Request):
+    user_id = request.state.user_id
+    deleted = 0
+    try:
+        conn = sqlite3.connect(DATABASE_PATHS["settings"])
+        cur = conn.cursor()
+        cur.execute("DELETE FROM keywords_store WHERE user_id = ?", (user_id,))
+        deleted = int(cur.rowcount or 0)
+        conn.commit()
+        conn.close()
+    except Exception:
+        pass
+
+    payload = _status_payload(f"Reset complete. Removed {deleted} keywords.", kind="success")
+    return templates.TemplateResponse("partials/status_message.html", {"request": request, **payload})
 
 
 @router.get("/keywords-download")

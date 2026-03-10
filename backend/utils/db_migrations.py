@@ -67,6 +67,15 @@ def ensure_users_schema(conn: sqlite3.Connection):
     cursor.execute("UPDATE users SET role = 'user' WHERE role IS NULL OR TRIM(role) = ''")
     cursor.execute("UPDATE users SET account_status = 'active' WHERE account_status IS NULL OR TRIM(account_status) = ''")
 
+    # Keep at least one admin account for legacy databases.
+    cursor.execute("SELECT COUNT(*) FROM users WHERE lower(role) IN ('admin', 'co_admin')")
+    admin_count = int(cursor.fetchone()[0] or 0)
+    if admin_count == 0:
+        cursor.execute("SELECT id FROM users ORDER BY id ASC LIMIT 1")
+        first = cursor.fetchone()
+        if first:
+            cursor.execute("UPDATE users SET role = 'admin' WHERE id = ?", (int(first[0]),))
+
     conn.commit()
 
 
@@ -166,6 +175,11 @@ def ensure_jobs_directory_schema(conn: sqlite3.Connection):
             salary TEXT,
             job_description TEXT,
             resume_match_score REAL DEFAULT 0,
+            posted_date_text TEXT,
+            posted_ts INTEGER DEFAULT 0,
+            normalized_title TEXT,
+            normalized_company TEXT,
+            normalized_location TEXT,
             job_url TEXT,
             scraped_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -176,10 +190,89 @@ def ensure_jobs_directory_schema(conn: sqlite3.Connection):
     _ensure_column(conn, "jobs_directory", "salary TEXT")
     _ensure_column(conn, "jobs_directory", "job_description TEXT")
     _ensure_column(conn, "jobs_directory", "resume_match_score REAL DEFAULT 0")
+    _ensure_column(conn, "jobs_directory", "posted_date_text TEXT")
+    _ensure_column(conn, "jobs_directory", "posted_ts INTEGER DEFAULT 0")
+    _ensure_column(conn, "jobs_directory", "normalized_title TEXT")
+    _ensure_column(conn, "jobs_directory", "normalized_company TEXT")
+    _ensure_column(conn, "jobs_directory", "normalized_location TEXT")
+
+    conn.execute(
+        """
+        UPDATE jobs_directory
+        SET normalized_title = lower(trim(coalesce(job_title, '')))
+        WHERE normalized_title IS NULL OR trim(normalized_title) = ''
+        """
+    )
+    conn.execute(
+        """
+        UPDATE jobs_directory
+        SET normalized_company = coalesce(nullif(lower(trim(coalesce(company, ''))), ''), lower(trim(coalesce(job_url, 'unknown'))))
+        WHERE normalized_company IS NULL OR trim(normalized_company) = ''
+        """
+    )
+    conn.execute(
+        """
+        UPDATE jobs_directory
+        SET normalized_location = coalesce(nullif(lower(trim(coalesce(location, ''))), ''), 'unknown')
+        WHERE normalized_location IS NULL OR trim(normalized_location) = ''
+        """
+    )
+    conn.execute(
+        """
+        UPDATE jobs_directory
+        SET posted_ts = 0
+        WHERE posted_ts IS NULL
+        """
+    )
+
+    # Remove exact URL duplicates per user, keep newest row id.
+    conn.execute(
+        """
+        DELETE FROM jobs_directory
+        WHERE job_url IS NOT NULL
+          AND trim(job_url) != ''
+          AND id NOT IN (
+            SELECT MAX(id)
+            FROM jobs_directory
+            WHERE job_url IS NOT NULL AND trim(job_url) != ''
+            GROUP BY user_id, job_url
+          )
+        """
+    )
+
+    # For same user + role + company + location, keep latest posting.
+    conn.execute(
+        """
+        DELETE FROM jobs_directory
+        WHERE id IN (
+            SELECT a.id
+            FROM jobs_directory a
+            JOIN jobs_directory b
+              ON a.user_id = b.user_id
+             AND coalesce(a.normalized_title, '') = coalesce(b.normalized_title, '')
+             AND coalesce(a.normalized_company, '') = coalesce(b.normalized_company, '')
+             AND coalesce(a.normalized_location, '') = coalesce(b.normalized_location, '')
+             AND (
+                coalesce(a.posted_ts, 0) < coalesce(b.posted_ts, 0)
+                OR (
+                    coalesce(a.posted_ts, 0) = coalesce(b.posted_ts, 0)
+                    AND a.id < b.id
+                )
+             )
+        )
+        """
+    )
+
     conn.execute(
         """
         CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_user_url
         ON jobs_directory(user_id, job_url)
+        """
+    )
+    conn.execute(
+        """
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_jobs_user_role_company_location
+        ON jobs_directory(user_id, normalized_title, normalized_company, normalized_location)
         """
     )
     conn.commit()

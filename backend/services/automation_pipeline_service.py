@@ -74,7 +74,7 @@ def execute_fetch_rank_apply_pipeline(
         pages=pages,
         user_id=user_id,
         search_query=search_query,
-        clear_existing=True,
+        clear_existing=False,
         filter_settings=settings,
         resume_text=resume_text,
         keywords=keywords,

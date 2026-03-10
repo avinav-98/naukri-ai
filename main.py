@@ -19,6 +19,7 @@ from backend.api.automation_api import router as automation_router
 from backend.api.ui_api import router as ui_router
 from backend.models.settings_model import get_settings
 from backend.models.ui_preferences_model import get_ui_preferences
+from backend.models.user_model import get_user_by_id
 from backend.services.automation_pipeline_service import has_user_resume
 
 
@@ -52,9 +53,19 @@ def _ctx(request: Request, extra: dict | None = None):
     if user_id:
         ctx["ui_prefs"] = get_ui_preferences(user_id=user_id)
         ctx["role"] = getattr(request.state, "role", "user")
+        row = get_user_by_id(user_id)
+        if row:
+            ctx["current_user"] = {
+                "id": row[0],
+                "full_name": row[1] or "",
+                "email": row[2] or "",
+            }
+        else:
+            ctx["current_user"] = {"id": user_id, "full_name": "", "email": ""}
     else:
         ctx["ui_prefs"] = {"theme_mode": "system", "layout_mode": "standard", "accent_color": "#0b57d0"}
         ctx["role"] = "user"
+        ctx["current_user"] = {"id": "", "full_name": "", "email": ""}
     if extra:
         ctx.update(extra)
     return ctx

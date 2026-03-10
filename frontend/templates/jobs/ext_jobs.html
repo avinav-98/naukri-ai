@@ -5,8 +5,20 @@
 <section class="panel-card table-shell">
   <div class="panel-card-header">
     <h3>External Jobs</h3>
+    <button
+      class="mui-btn mui-btn--danger"
+      hx-delete="/ui/ext-jobs-reset"
+      hx-target="#extStatus"
+      hx-swap="innerHTML"
+      hx-on::after-request="document.body.dispatchEvent(new Event('refreshExtJobs'))"
+    >
+      Reset External
+    </button>
   </div>
   <div class="panel-card-body">
+    <div id="extStatus" style="margin-bottom:12px;">
+      {% include "partials/status_message.html" with context %}
+    </div>
     <table>
       <thead>
         <tr>
@@ -21,7 +33,7 @@
       </thead>
       <tbody
         hx-get="/ui/ext-jobs-rows"
-        hx-trigger="load, every 12s"
+        hx-trigger="load, every 12s, refreshExtJobs from:body"
         hx-swap="innerHTML"
       >
         <tr><td colspan="7">Loading...</td></tr>

@@ -708,3 +708,9 @@ System will now support:
 •	UI theme customization
 •	System monitoring dashboard
 
+Perfect everything is working perfectly now i need to fix UI and Designs of my App. 
+Use Javascript for animations and smooth user experience. 
+currently my system has MINI CSS framework which is working perfectly. 
+now the only thing i need is Javascript in my app. 
+before start run a quick system scan and get the latest update then start implementing 
+or if youn have any suggestion UI related ask and confirm with me.

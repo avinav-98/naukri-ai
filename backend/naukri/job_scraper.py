@@ -1,4 +1,5 @@
 import sqlite3
+from datetime import datetime, timedelta, timezone
 from typing import Any
 
 from backend.automation.browser_manager import get_browser
@@ -11,8 +12,8 @@ from backend.services.resume_analyzer_service import (
 )
 from backend.utils.activity_logger import log_activity
 from backend.utils.db_migrations import ensure_jobs_directory_schema
-from backend.utils.job_filters import evaluate_job_filters
 from backend.utils.job_deduplicator import job_exists
+from backend.utils.job_filters import evaluate_job_filters
 
 
 def _text_or_empty(node):
@@ -25,6 +26,65 @@ def _first_match(card, selectors: list[str]):
         if node:
             return node
     return None
+
+
+def _norm(text: str) -> str:
+    return (text or "").strip().lower()
+
+
+def _posted_text_to_ts(posted_text: str) -> int:
+    text = (posted_text or "").strip().lower()
+    now = datetime.now(timezone.utc)
+    try:
+        if "just now" in text or "today" in text:
+            return int(now.timestamp())
+        if "yesterday" in text:
+            return int((now - timedelta(days=1)).timestamp())
+        if "hour" in text:
+            n = int("".join(ch for ch in text if ch.isdigit()) or "1")
+            return int((now - timedelta(hours=n)).timestamp())
+        if "minute" in text:
+            n = int("".join(ch for ch in text if ch.isdigit()) or "1")
+            return int((now - timedelta(minutes=n)).timestamp())
+        if "day" in text:
+            n = int("".join(ch for ch in text if ch.isdigit()) or "1")
+            return int((now - timedelta(days=n)).timestamp())
+        if "week" in text:
+            n = int("".join(ch for ch in text if ch.isdigit()) or "1")
+            return int((now - timedelta(weeks=n)).timestamp())
+        if "month" in text:
+            n = int("".join(ch for ch in text if ch.isdigit()) or "1")
+            return int((now - timedelta(days=n * 30)).timestamp())
+    except Exception:
+        pass
+    return int(now.timestamp())
+
+
+def _dedupe_jobs(jobs: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    by_url: dict[str, dict[str, Any]] = {}
+    without_url: list[dict[str, Any]] = []
+
+    for job in jobs:
+        url = (job.get("url") or "").strip()
+        if not url:
+            without_url.append(job)
+            continue
+        old = by_url.get(url)
+        if not old or int(job.get("posted_ts", 0)) >= int(old.get("posted_ts", 0)):
+            by_url[url] = job
+
+    merged = list(by_url.values()) + without_url
+    by_company_role: dict[tuple[str, str, str], dict[str, Any]] = {}
+    for job in merged:
+        key = (
+            _norm(job.get("title", "")),
+            _norm(job.get("company", "")),
+            _norm(job.get("location", "")),
+        )
+        old = by_company_role.get(key)
+        if not old or int(job.get("posted_ts", 0)) >= int(old.get("posted_ts", 0)):
+            by_company_role[key] = job
+    return list(by_company_role.values())
 
 
 def _dismiss_blocking_overlays(page):
@@ -96,7 +156,6 @@ def _go_to_search_results(page, search_query: str, settings: dict[str, Any] | No
 
     page.goto("https://www.naukri.com")
     page.wait_for_timeout(2000)
-
     _dismiss_blocking_overlays(page)
 
     keyword_selector = "input[placeholder*='keyword'], input[placeholder*='designation'], input.suggestor-input"
@@ -123,7 +182,6 @@ def _go_to_search_results(page, search_query: str, settings: dict[str, Any] | No
                 if option:
                     option.click(timeout=3000, force=True)
         except Exception:
-            # Experience selection is optional; continue and enforce via downstream filters.
             pass
 
     searched = False
@@ -205,6 +263,7 @@ def scrape_jobs(
             experience = _first_match(card, [".expwdth", ".exp-wrap", "span.expwdth"])
             salary = _first_match(card, [".sal-wrap", ".salary", "span.sal-wrap"])
             description = _first_match(card, [".job-desc", ".job-description", ".jobTupleFooter", ".job-snippet"])
+            posted_node = _first_match(card, [".job-post-day", ".job-post-daytime", ".jobTupleFooter .fleft", "span:has-text('ago')"])
 
             if not title:
                 continue
@@ -219,6 +278,9 @@ def scrape_jobs(
             experience_text = _text_or_empty(experience)
             salary_text = _text_or_empty(salary)
             description_text = _text_or_empty(description)
+            posted_text = _text_or_empty(posted_node)
+            posted_ts = _posted_text_to_ts(posted_text)
+
             if len(description_text) < 40:
                 description_text = _extract_full_description(context, job_url) or description_text
 
@@ -234,6 +296,8 @@ def scrape_jobs(
                 "experience": experience_text,
                 "salary": salary_text,
                 "description": description_text,
+                "posted_date_text": posted_text,
+                "posted_ts": posted_ts,
                 "url": job_url,
                 "settings": filter_settings or {},
             }
@@ -253,7 +317,13 @@ def scrape_jobs(
                 filtered_out += 1
                 continue
 
-            if not job_exists(job_url, user_id=user_id):
+            if not job_exists(
+                job_url,
+                user_id=user_id,
+                job_title=job_title,
+                company=company_name,
+                location=location_name,
+            ):
                 jobs.append(candidate)
 
         next_btn = page.query_selector("a[title='Next']")
@@ -262,6 +332,7 @@ def scrape_jobs(
         else:
             break
 
+    jobs = _dedupe_jobs(jobs)
     save_jobs(jobs)
     save_keyword_list(user_id=user_id, keywords=sorted(extracted_keywords_all))
     log_activity("Jobs Scraped", f"{len(jobs)} jobs added, {filtered_out} filtered out")
@@ -275,24 +346,87 @@ def save_jobs(jobs):
     cursor = conn.cursor()
 
     for job in jobs:
+        payload = (
+            job.get("user_id", 1),
+            job["title"],
+            job["company"],
+            job["location"],
+            job.get("experience", ""),
+            job.get("salary", ""),
+            job.get("description", ""),
+            float(job.get("resume_match_score", 0.0)),
+            job.get("posted_date_text", ""),
+            int(job.get("posted_ts", 0)),
+            _norm(job["title"]),
+            _norm(job["company"]) or _norm(job["url"]) or "unknown",
+            _norm(job["location"]) or "unknown",
+            job["url"],
+        )
+
         cursor.execute(
             """
-            INSERT OR IGNORE INTO jobs_directory
-            (user_id, job_title, company, location, experience, salary, job_description, resume_match_score, job_url)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            INSERT INTO jobs_directory
+            (user_id, job_title, company, location, experience, salary, job_description, resume_match_score,
+             posted_date_text, posted_ts, normalized_title, normalized_company, normalized_location, job_url)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON CONFLICT(user_id, job_url) DO UPDATE SET
+                job_title = excluded.job_title,
+                company = excluded.company,
+                location = excluded.location,
+                experience = excluded.experience,
+                salary = excluded.salary,
+                job_description = excluded.job_description,
+                resume_match_score = excluded.resume_match_score,
+                posted_date_text = excluded.posted_date_text,
+                posted_ts = CASE
+                    WHEN coalesce(excluded.posted_ts, 0) >= coalesce(jobs_directory.posted_ts, 0) THEN excluded.posted_ts
+                    ELSE jobs_directory.posted_ts
+                END,
+                normalized_title = excluded.normalized_title,
+                normalized_company = excluded.normalized_company,
+                normalized_location = excluded.normalized_location,
+                scraped_at = CURRENT_TIMESTAMP
             """,
-            (
-                job.get("user_id", 1),
-                job["title"],
-                job["company"],
-                job["location"],
-                job.get("experience", ""),
-                job.get("salary", ""),
-                job.get("description", ""),
-                float(job.get("resume_match_score", 0.0)),
-                job["url"],
-            ),
+            payload,
         )
+
+        try:
+            cursor.execute(
+                """
+                INSERT INTO jobs_directory
+                (user_id, job_title, company, location, experience, salary, job_description, resume_match_score,
+                 posted_date_text, posted_ts, normalized_title, normalized_company, normalized_location, job_url)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(user_id, normalized_title, normalized_company, normalized_location) DO UPDATE SET
+                    job_title = excluded.job_title,
+                    company = excluded.company,
+                    location = excluded.location,
+                    experience = excluded.experience,
+                    salary = excluded.salary,
+                    job_description = excluded.job_description,
+                    resume_match_score = excluded.resume_match_score,
+                    posted_date_text = CASE
+                        WHEN coalesce(excluded.posted_ts, 0) >= coalesce(jobs_directory.posted_ts, 0) THEN excluded.posted_date_text
+                        ELSE jobs_directory.posted_date_text
+                    END,
+                    posted_ts = CASE
+                        WHEN coalesce(excluded.posted_ts, 0) >= coalesce(jobs_directory.posted_ts, 0) THEN excluded.posted_ts
+                        ELSE jobs_directory.posted_ts
+                    END,
+                    job_url = CASE
+                        WHEN coalesce(excluded.posted_ts, 0) >= coalesce(jobs_directory.posted_ts, 0) THEN excluded.job_url
+                        ELSE jobs_directory.job_url
+                    END,
+                    normalized_title = excluded.normalized_title,
+                    normalized_company = excluded.normalized_company,
+                    normalized_location = excluded.normalized_location,
+                    scraped_at = CURRENT_TIMESTAMP
+                """,
+                payload,
+            )
+        except sqlite3.IntegrityError:
+            # Keep existing row when URL uniqueness conflicts with another latest record.
+            pass
 
     conn.commit()
     conn.close()

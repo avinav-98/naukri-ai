@@ -25,14 +25,17 @@ def auto_apply(user_id, resume_path, limit=5, settings=None):
         location = job["location"]
         job_url = job["job_url"]
 
-        result = apply_to_job(
-            user_id,
-            job_title,
-            company,
-            location,
-            job.get("experience", ""),
-            job_url
-        )
+        try:
+            result = apply_to_job(
+                user_id,
+                job_title,
+                company,
+                location,
+                job.get("experience", ""),
+                job_url
+            )
+        except Exception:
+            result = {"status": "failed"}
 
         status = (result or {}).get("status", "failed")
         if status == "applied":

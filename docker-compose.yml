@@ -11,9 +11,10 @@ services:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
       PIPELINE_EXECUTOR: celery
-      PLAYWRIGHT_HEADLESS: "true"
+      PLAYWRIGHT_HEADLESS: "false"
       JWT_SECRET: naukri_auto_apply_secret_min_32_chars_2026
       NAUKRI_CREDENTIALS_SECRET: change-this-in-production
+      DISPLAY: ":99"
     volumes:
       - ./database:/app/database
       - ./storage:/app/storage
@@ -27,14 +28,27 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: naukri-worker
-    command: celery -A backend.workers.celery_app.celery_app worker --loglevel=info --pool=threads --concurrency=1
+    command:
+      [
+        "xvfb-run",
+        "--auto-servernum",
+        "--server-args=-screen 0 1920x1080x24",
+        "celery",
+        "-A",
+        "backend.workers.celery_app.celery_app",
+        "worker",
+        "--loglevel=info",
+        "--pool=threads",
+        "--concurrency=1"
+      ]
     shm_size: "1gb"
     environment:
       CELERY_BROKER_URL: redis://redis:6379/0
       CELERY_RESULT_BACKEND: redis://redis:6379/1
-      PLAYWRIGHT_HEADLESS: "true"
+      PLAYWRIGHT_HEADLESS: "false"
       JWT_SECRET: naukri_auto_apply_secret_min_32_chars_2026
       NAUKRI_CREDENTIALS_SECRET: change-this-in-production
+      DISPLAY: ":99"
     volumes:
       - ./database:/app/database
       - ./storage:/app/storage

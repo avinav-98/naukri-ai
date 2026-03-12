@@ -1,14 +1,28 @@
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+DATABASE_DIR = BASE_DIR / "database"
+MAIN_DATABASE_PATH = DATABASE_DIR / "main.db"
+
+LEGACY_DATABASE_PATHS = {
+    "users": DATABASE_DIR / "users.db",
+    "jobs": DATABASE_DIR / "jobs_directory.db",
+    "applied": DATABASE_DIR / "applied_jobs.db",
+    "relevant": DATABASE_DIR / "relevant_jobs.db",
+    "settings": DATABASE_DIR / "settings.db",
+    "standard": DATABASE_DIR / "standard_jobs.db",
+    "ext": DATABASE_DIR / "ext_jobs.db",
+    "runs": DATABASE_DIR / "automation_runs.db",
+}
 
 DATABASE_PATHS = {
-    "users": BASE_DIR / "database" / "users.db",
-    "jobs": BASE_DIR / "database" / "jobs_directory.db",
-    "applied": BASE_DIR / "database" / "applied_jobs.db",
-    "relevant": BASE_DIR / "database" / "relevant_jobs.db",
-    "settings": BASE_DIR / "database" / "settings.db",
-    "standard": BASE_DIR / "database" / "standard_jobs.db",
-    "ext": BASE_DIR / "database" / "ext_jobs.db",
-    "runs": BASE_DIR / "database" / "automation_runs.db",
+    "main": MAIN_DATABASE_PATH,
+    "users": MAIN_DATABASE_PATH,
+    "jobs": MAIN_DATABASE_PATH,
+    "applied": MAIN_DATABASE_PATH,
+    "relevant": MAIN_DATABASE_PATH,
+    "settings": MAIN_DATABASE_PATH,
+    "standard": MAIN_DATABASE_PATH,
+    "ext": MAIN_DATABASE_PATH,
+    "runs": MAIN_DATABASE_PATH,
 }

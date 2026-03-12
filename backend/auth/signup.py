@@ -2,6 +2,7 @@ from fastapi import APIRouter, Form
 from fastapi.responses import JSONResponse
 import sqlite3
 from backend.auth.password_hash import hash_password
+from backend.config import DATABASE_PATHS
 from backend.models.admin_log_model import log_admin_event
 from backend.models.user_model import count_users
 from backend.security.credentials_crypto import encrypt_text
@@ -18,7 +19,7 @@ async def signup(
     naukri_password: str = Form(...)
 ):
 
-    conn = sqlite3.connect("database/users.db")
+    conn = sqlite3.connect(DATABASE_PATHS["users"])
     cursor = conn.cursor()
     ensure_users_schema(conn)
 

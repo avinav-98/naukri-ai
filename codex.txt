@@ -1,3 +1,213 @@
+NAUKRI-AI PROJECT DIRECTORY STRUCTURE
+
+```text
+naukri-ai/
+|-- .dockerignore
+|-- .firebaserc
+|-- .gitignore
+|-- docker-compose.yml
+|-- Dockerfile
+|-- firebase.json
+|-- main.py
+|-- package-lock.json
+|-- package.json
+|-- README.md
+|-- requirements.txt
+|-- test_browser.py
+|-- backend/
+|   |-- __init__.py
+|   |-- config.py
+|   |-- database.py
+|   |-- ai_engine/
+|   |   |-- embedding_model.py
+|   |   |-- job_matcher.py
+|   |   |-- model_cache.py
+|   |   |-- ranking_engine.py
+|   |   `-- resume_parser.py
+|   |-- api/
+|   |   |-- activity_api.py
+|   |   |-- admin_api.py
+|   |   |-- automation_api.py
+|   |   |-- dashboard_api.py
+|   |   |-- jobs_api.py
+|   |   |-- settings_api.py
+|   |   `-- ui_api.py
+|   |-- auth/
+|   |   |-- auth_middleware.py
+|   |   |-- google_signin.py
+|   |   |-- jwt_handler.py
+|   |   |-- logout.py
+|   |   |-- password_hash.py
+|   |   |-- password_reset.py
+|   |   |-- signin.py
+|   |   `-- signup.py
+|   |-- automation/
+|   |   |-- __init__.py
+|   |   |-- browser_manager.py
+|   |   |-- human_behavior.py
+|   |   |-- playwright_setup.py
+|   |   `-- session_manager.py
+|   |-- models/
+|   |   |-- admin_log_model.py
+|   |   |-- admin_settings_model.py
+|   |   |-- applied_jobs_model.py
+|   |   |-- ext_jobs_model.py
+|   |   |-- job_directory_model.py
+|   |   |-- pipeline_run_model.py
+|   |   |-- relevant_jobs_model.py
+|   |   |-- settings_model.py
+|   |   |-- ui_preferences_model.py
+|   |   `-- user_model.py
+|   |-- naukri/
+|   |   |-- __init__.py
+|   |   |-- apply_jobs.py
+|   |   |-- job_scraper.py
+|   |   |-- naukri_login.py
+|   |   `-- profile_scraper.py
+|   |-- scheduler/
+|   |   |-- automation_scheduler.py
+|   |   `-- auto_apply_scheduler.py
+|   |-- security/
+|   |   |-- __init__.py
+|   |   `-- credentials_crypto.py
+|   |-- services/
+|   |   |-- __init__.py
+|   |   |-- apply_service.py
+|   |   |-- automation_pipeline_service.py
+|   |   |-- fetch_jobs_service.py
+|   |   |-- job_ranking_service.py
+|   |   |-- naukri_profile_service.py
+|   |   `-- resume_analyzer_service.py
+|   |-- utils/
+|   |   |-- __init__.py
+|   |   |-- activity_logger.py
+|   |   |-- db_migrations.py
+|   |   |-- helpers.py
+|   |   |-- job_deduplicator.py
+|   |   |-- job_filters.py
+|   |   |-- logger.py
+|   |   |-- user_workspace.py
+|   |   `-- validators.py
+|   `-- workers/
+|       |-- __init__.py
+|       |-- automation_worker.py
+|       |-- celery_app.py
+|       |-- pipeline_runner.py
+|       |-- pipeline_tasks.py
+|       `-- pipeline_worker.py
+|-- database/
+|   |-- applied_jobs.db
+|   |-- automation_runs.db
+|   |-- ext_jobs.db
+|   |-- jobs_directory.db
+|   |-- relevant_jobs.db
+|   |-- settings.db
+|   |-- standard_jobs.db
+|   `-- users.db
+|-- frontend/
+|   |-- static/
+|   |   |-- css/
+|   |   |   |-- admin.css
+|   |   |   |-- control_panel.css
+|   |   |   |-- dashboard.css
+|   |   |   |-- fetch_jobs.css
+|   |   |   `-- style.css
+|   |   `-- js/
+|   |       |-- applied_jobs.js
+|   |       |-- dashboard.js
+|   |       |-- fetch_jobs.js
+|   |       |-- jobs_directory.js
+|   |       |-- relevant_jobs.js
+|   |       |-- settings.js
+|   |       |-- standard_jobs.js
+|   |       `-- ui_enhancements.js
+|   `-- templates/
+|       |-- auth_base.html
+|       |-- base.html
+|       |-- dashboard_base.html
+|       |-- admin/
+|       |   |-- dashboard.html
+|       |   |-- forbidden.html
+|       |   |-- logs.html
+|       |   |-- settings.html
+|       |   `-- users.html
+|       |-- auth/
+|       |   |-- forgot_password.html
+|       |   |-- reset_password.html
+|       |   |-- signin.html
+|       |   `-- signup.html
+|       |-- dashboard/
+|       |   |-- dashboard.html
+|       |   |-- keywords.html
+|       |   `-- resume_analyzer.html
+|       |-- jobs/
+|       |   |-- applied_jobs.html
+|       |   |-- ext_jobs.html
+|       |   |-- fetch_jobs.html
+|       |   |-- jobs_directory.html
+|       |   |-- relevant_jobs.html
+|       |   `-- standard_jobs.html
+|       |-- partials/
+|       |   |-- applied_jobs_rows.html
+|       |   |-- dashboard_stats.html
+|       |   |-- ext_jobs_rows.html
+|       |   |-- fetch_go_directory.html
+|       |   |-- jobs_directory_rows.html
+|       |   |-- keywords_rows.html
+|       |   |-- pipeline_runs_rows.html
+|       |   |-- relevant_jobs_rows.html
+|       |   |-- resume_analyzer_rows.html
+|       |   `-- status_message.html
+|       |-- profile/
+|       |   `-- profile.html
+|       `-- settings/
+|           `-- control_panel.html
+|-- naukri-ai/
+|-- public/
+|   `-- index.html
+|-- scripts/
+|   |-- init_database.py
+|   |-- install_playwright.py
+|   |-- run_worker.py
+|   |-- test_ai_ranking.py
+|   |-- test_auto_apply.py
+|   |-- test_job_scraper.py
+|   |-- test_naukri_login.py
+|   |-- test_playwright.py
+|   `-- test_session.py
+`-- storage/
+    |-- logs/
+    |   `-- activity_log.json
+    |-- resumes/
+    |   `-- my_resume.txt
+    |-- session/
+    |   `-- naukri_session.json
+    `-- users/
+        |-- 1/
+        |   |-- resumes/
+        |   |   |-- my_resume.txt
+        |   |   `-- resume.txt
+        |   `-- session/
+        |       `-- naukri_session.json
+        |-- 2/
+        |   |-- resumes/
+        |   |   |-- my_resume.txt
+        |   |   `-- resume.txt
+        |   `-- session/
+        |       `-- naukri_session.json
+        `-- 3/
+            |-- resumes/
+            |   |-- my_resume.txt
+            |   `-- resume.txt
+            `-- session/
+                `-- naukri_session.json
+```
+
+Notes:
+- Omitted: `.git/` and `__pycache__/` folders.
+- Included: source code, templates, scripts, databases, and runtime storage folders currently present in the project.
+
+
 python -m uvicorn main:app --reload
 06-03-2026 18:58:49
 PROJECT: Naukri Auto Apply AI

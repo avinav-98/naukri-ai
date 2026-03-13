@@ -3,6 +3,7 @@ from fastapi.responses import JSONResponse
 import sqlite3
 from backend.auth.password_hash import verify_password
 from backend.auth.jwt_handler import create_token
+from backend.config import DATABASE_PATHS
 from backend.models.admin_log_model import log_admin_event
 from backend.models.user_model import update_last_login
 from backend.utils.db_migrations import ensure_users_schema
@@ -15,7 +16,7 @@ async def signin(
     password: str = Form(...)
 ):
 
-    conn = sqlite3.connect("database/users.db")
+    conn = sqlite3.connect(DATABASE_PATHS["users"])
     cursor = conn.cursor()
     ensure_users_schema(conn)
 

@@ -1,10 +1,11 @@
 import sqlite3
+from backend.config import DATABASE_PATHS
 from backend.services.apply_service import auto_apply
 
 
 def get_all_users():
 
-    conn = sqlite3.connect("database/users.db")
+    conn = sqlite3.connect(DATABASE_PATHS["users"])
     cursor = conn.cursor()
 
     cursor.execute("SELECT id FROM users")

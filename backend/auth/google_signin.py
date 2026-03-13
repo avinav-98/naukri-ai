@@ -2,6 +2,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 import sqlite3
 from backend.auth.jwt_handler import create_token
+from backend.config import DATABASE_PATHS
 from backend.models.admin_log_model import log_admin_event
 from backend.models.user_model import count_users, update_last_login
 from backend.utils.db_migrations import ensure_users_schema
@@ -16,7 +17,7 @@ async def google_signin(request: Request):
     email = data.get("email")
     name = data.get("name")
 
-    conn = sqlite3.connect("database/users.db")
+    conn = sqlite3.connect(DATABASE_PATHS["users"])
     cursor = conn.cursor()
     ensure_users_schema(conn)
 

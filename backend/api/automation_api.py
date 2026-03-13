@@ -57,7 +57,9 @@ async def portal_login(request: Request):
         )
 
     if not ok:
+        print(f"[PORTAL_LOGIN] user_id={user_id} failed: {message}")
         return JSONResponse(status_code=400, content={"status": "error", "error": message})
+    print(f"[PORTAL_LOGIN] user_id={user_id} success: {message}")
     return {"status": "success", "message": message}
 
 

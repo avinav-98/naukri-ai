@@ -2,11 +2,8 @@ NAUKRI-AI PROJECT DIRECTORY STRUCTURE
 
 ```text
 naukri-ai/
-|-- .dockerignore
 |-- .firebaserc
 |-- .gitignore
-|-- docker-compose.yml
-|-- Dockerfile
 |-- firebase.json
 |-- main.py
 |-- package-lock.json
@@ -924,79 +921,6 @@ currently my system has MINI CSS framework which is working perfectly.
 now the only thing i need is Javascript in my app. 
 before start run a quick system scan and get the latest update then start implementing 
 or if youn have any suggestion UI related ask and confirm with me.
-Required Fixes
-1. Update Dockerfile
-Modify the Dockerfile so the container has a virtual
-display server (Xvfb).
-Add installation:
-RUN apt-get update && apt-get install -y \
-    xvfb \
-    x11-utils \
-    xauth
-Add environment variable:
-ENV DISPLAY=:99
-2. Run application with Xvfb
-Update the Docker run command so the X server starts when
-the container starts, not during build.
-Replace:
-CMD ["uvicorn", "main:app",
-"--host", "0.0.0.0", "--port", "8000"]
-with:
-CMD ["xvfb-run", "--auto-servernum",
-"--server-args=-screen 0 1920x1080x24", "uvicorn",
-"main:app", "--host", "0.0.0.0",
-"--port", "8000"]
-
-3. Ensure Playwright launch config supports containers
-Check browser launch code and ensure it uses:
-browser = playwright.chromium.launch(
-    headless=False,
-    args=["--no-sandbox", "--disable-dev-shm-usage"]
-)
-4. Ensure popup handling still works
-The automation must still support popup windows
-triggered by the application.
-Verify the code handles popups correctly using:
-with page.expect_popup() as popup_info:
-
-    page.click(selector)
-
-
-
-popup = popup_info.value
-
-popup.wait_for_load_state()
-
-
-Do not remove popup automation logic.
-5. Validate Playwright browser installation
-Ensure the Dockerfile includes:
-RUN playwright install chromium
-and if missing add:
-RUN playwright install-deps
-
-Expected Result
-After the fix:
-Docker
-     container starts successfully
-Playwright
-     launches headed Chromium
-Xvfb
-     provides virtual display
-Popup
-     browser automation works
-FastAPI
-     endpoint executes browser automation without crashing
-
-Output Required From Codex
-
-Provide:
-Corrected
-     Dockerfile
-Any required
-     changes to Playwright launch code
-Explanation
-     of what was fixed
 
 
 Fix Ext Jobs Links + Restore Auto Apply

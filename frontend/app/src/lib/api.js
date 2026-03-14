@@ -52,10 +52,10 @@ export async function apiRequest(path, options = {}) {
 }
 
 export const sessionApi = {
-  getSession: () => apiRequest("/api/session"),
-  login: (form) => apiRequest("/api/session/login", { method: "POST", form }),
-  signup: (form) => apiRequest("/api/session/signup", { method: "POST", form }),
-  logout: () => apiRequest("/api/session/logout", { method: "POST" }),
-  forgotPassword: (form) => apiRequest("/api/session/forgot-password", { method: "POST", form }),
-  resetPassword: (token, form) => apiRequest(`/api/session/reset-password/${token}`, { method: "POST", form }),
+  getSession: () => apiRequest("/auth/session"),
+  login: (form) => apiRequest("/auth/login", { method: "POST", form }),
+  signup: (form) => apiRequest("/auth/signup", { method: "POST", form }),
+  logout: () => apiRequest("/auth/logout", { method: "POST" }),
+  forgotPassword: (form) => apiRequest("/auth/forgot-password", { method: "POST", form }),
+  resetPassword: (token, form) => apiRequest("/auth/reset-password", { method: "POST", form: { ...form, token } }),
 };

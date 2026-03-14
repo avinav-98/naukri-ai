@@ -5,11 +5,6 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.staticfiles import StaticFiles
 
 from backend.auth.auth_middleware import AuthMiddleware
-from backend.auth.google_signin import router as google_signin_router
-from backend.auth.logout import router as logout_router
-from backend.auth.password_reset import router as password_reset_router
-from backend.auth.signin import router as signin_router
-from backend.auth.signup import router as signup_router
 
 from backend.api.session_api import router as session_router
 from backend.api.dashboard_api import router as dashboard_router
@@ -33,12 +28,6 @@ if SPA_ASSETS_DIR.exists():
     app.mount("/assets", StaticFiles(directory=str(SPA_ASSETS_DIR)), name="assets")
 
 # Register Routers
-app.include_router(signin_router)
-app.include_router(signup_router)
-app.include_router(logout_router)
-app.include_router(google_signin_router)
-app.include_router(password_reset_router)
-
 app.include_router(session_router)
 app.include_router(dashboard_router)
 app.include_router(jobs_router)
@@ -80,6 +69,6 @@ def spa_root():
 
 @app.get("/{full_path:path}", response_class=HTMLResponse)
 def spa_fallback(full_path: str):
-    if full_path.startswith("api/"):
+    if full_path.startswith(("api/", "auth/")):
         return HTMLResponse("Not Found", status_code=404)
     return _spa_index_response()

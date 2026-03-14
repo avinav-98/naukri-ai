@@ -9,18 +9,16 @@ PUBLIC_EXACT_PATHS = {
     "/",
     "/signup",
     "/signin",
-    "/signin-google",
     "/openapi.json",
     "/forgot-password",
-    "/logout",
-    "/switch-user",
 }
 PUBLIC_PREFIX_PATHS = ("/assets", "/docs", "/reset-password")
 PUBLIC_API_PREFIXES = (
-    "/api/session/login",
-    "/api/session/signup",
-    "/api/session/forgot-password",
-    "/api/session/reset-password",
+    "/auth/google",
+    "/auth/login",
+    "/auth/signup",
+    "/auth/forgot-password",
+    "/auth/reset-password",
 )
 
 

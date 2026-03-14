@@ -1076,3 +1076,147 @@ The system should now:
 • store them in the existing keywords table
 • display them as Key-Skills in UI
 • use them for resume-job matching
+
+You are a senior backend + frontend security engineer working on this repository.
+Your task is to fix several high-priority security and stability issues in a safe, minimal, production-ready way.
+IMPORTANT RULES
+1. Do NOT introduce new frameworks.
+2. Do NOT change existing API contracts unless explicitly instructed.
+3. Maintain backward compatibility unless removing legacy code explicitly mentioned.
+4. Keep patches minimal and focused.
+5. Ensure code compiles and runs after changes.
+6. Never log secrets, tokens, passwords, or reset links.
+Work through the following issues STRICTLY IN ORDER.
+
+STEP 1 — SECURITY FIX (CRITICAL)
+Files involved:
+- session_api.py
+- password_reset.py
+Problem:
+Password reset tokens are being written into logs.
+Risk:
+This allows account takeover if logs are accessed.
+Required fix:
+1. Remove ALL logging of reset tokens.
+2. If logging is necessary, log only metadata:
+   - user_id
+   - request timestamp
+   - success/failure status
+Example acceptable logging:
+    logger.info("Password reset requested for user_id=%s", user_id)
+Example forbidden logging:
+    logger.info("Password reset token=%s", token)
+3. Ensure reset tokens are:
+   - never returned in logs
+   - never written to admin logs
+   - never printed to console
+4. If tokens are returned to frontend via API, they must only be included in the secure reset link generation step and not logged anywhere.
+5. Verify forgot/reset flow still works after removal.
+
+STEP 2 — FIX FRONTEND BUILD FAILURE
+Problem:
+`npm run build` fails with:
+spawn EPERM
+during Vite / esbuild startup.
+Goal:
+Ensure the frontend build succeeds reliably.
+Actions:
+1. Inspect package.json scripts.
+2. Verify Vite configuration.
+3. Ensure esbuild binary permissions are correct.
+4. If necessary:
+   - reinstall esbuild
+   - update Vite config
+   - ensure node_modules/.bin executables are runnable.
+Potential fixes to apply if detected:
+• Clear corrupted install:
+    rm -rf node_modules
+    rm package-lock.json
+    npm install
+• Ensure esbuild dependency exists:
+    npm install esbuild --save-dev
+• Ensure Vite build script is correct:
+    "build": "vite build"
+• If Windows permission issues detected, ensure esbuild binary execution works.
+Do NOT downgrade major dependencies unless absolutely required.
+Goal state:
+Running
+    npm run build
+completes successfully without errors.
+
+STEP 3 — AUTH SYSTEM CONSOLIDATION
+Current problem:
+Auth functionality exists in multiple places.
+Legacy routes:
+- signin.py
+- signup.py
+- password_reset.py
+New system:
+- session_api.py
+Goal:
+Single unified authentication surface.
+Actions:
+1. Move authentication logic into session_api.py.
+2. Ensure the following endpoints exist there:
+- POST /auth/login
+- POST /auth/signup
+- POST /auth/forgot-password
+- POST /auth/reset-password
+- POST /auth/logout
+- GET /auth/session
+3. Update any imports or routers referencing the legacy files.
+4. Deprecate and remove the following modules:
+- signin.py
+- signup.py
+5. password_reset.py should either:
+   - be merged into session_api.py
+   OR
+   - remain as an internal utility module (not a public route).
+6. Ensure no duplicate routes exist.
+
+STEP 4 — REMOVE LEGACY DATABASE MIGRATION CODE
+Files involved:
+- config.py
+- database.py
+Problem:
+Legacy migration paths remain even though old DB files no longer exist.
+Specifically:
+config.py contains:
+    LEGACY_DATABASE_PATHS
+database.py contains logic attempting to import from those.
+Goal:
+Simplify database initialization.
+Actions:
+1. Remove LEGACY_DATABASE_PATHS from config.py.
+2. Remove any import / migration logic referencing legacy DB paths.
+3. Keep only the current database initialization logic.
+4. Ensure app still starts with a clean database.
+
+STEP 5 — EXPAND ADMIN REACT UI
+Backend capabilities already exist in:
+    admin_api.py
+But React admin UI does not expose them.
+Goal:
+Expose admin functionality in the React interface.
+Add UI features:
+1. User list view
+2. User profile inspection
+3. Account status display
+4. Ability to edit user settings
+5. Display system configuration values
+Constraints:
+• Use existing API routes in admin_api.py
+• Do NOT duplicate backend logic
+• Keep UI minimal and functional
+• Maintain existing React structure
+
+FINAL VALIDATION
+Before finishing:
+1. Backend runs without errors.
+2. Frontend build succeeds:
+    npm run build
+3. No tokens or secrets appear in logs.
+4. Only one authentication API surface remains.
+5. Legacy migration code removed.
+6. Admin UI successfully communicates with admin_api.py.
+Return a patch-style set of changes for each modified file.

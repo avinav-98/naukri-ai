@@ -1,3 +1,5 @@
+import sqlite3
+
 from fastapi import APIRouter, Form, Request
 from fastapi.responses import JSONResponse
 
@@ -17,10 +19,9 @@ from backend.models.user_model import (
 from backend.security.credentials_crypto import encrypt_text
 from backend.config import DATABASE_PATHS
 from backend.utils.db_migrations import ensure_users_schema
-import sqlite3
 
 
-router = APIRouter(prefix="/api/session")
+router = APIRouter(prefix="/auth")
 
 
 def _user_payload(row):
@@ -36,7 +37,20 @@ def _user_payload(row):
     }
 
 
-@router.get("")
+def _set_session_cookie(response: JSONResponse, token: str):
+    response.set_cookie(key="session", value=token, httponly=True, samesite="lax", secure=False)
+
+
+def _log_password_reset_request(user_id: int | None, success: bool):
+    log_admin_event(
+        "password_reset_requested",
+        f"status={'success' if success else 'ignored'}",
+        user_id=user_id,
+        level="info",
+    )
+
+
+@router.get("/session")
 def read_session(request: Request):
     user_id = getattr(request.state, "user_id", None)
     if not user_id:
@@ -68,7 +82,7 @@ def login(email: str = Form(...), password: str = Form(...)):
         return JSONResponse(status_code=401, content={"status": "error", "error": "Invalid email or password"})
 
     update_last_login(user_id)
-    log_admin_event("user_login", f"Session API login success: {saved_email}", user_id=user_id)
+    log_admin_event("user_login", "status=success", user_id=user_id)
     token = create_token(user_id, role=role)
     response = JSONResponse(
         {
@@ -86,7 +100,7 @@ def login(email: str = Form(...), password: str = Form(...)):
             "ui_preferences": get_ui_preferences(user_id=user_id),
         }
     )
-    response.set_cookie(key="session", value=token, httponly=True, samesite="lax", secure=False)
+    _set_session_cookie(response, token)
     return response
 
 
@@ -125,7 +139,7 @@ def signup(
     conn.commit()
     conn.close()
 
-    log_admin_event("user_signup", f"Session API signup: {normalized_email} as {role}", user_id=user_id)
+    log_admin_event("user_signup", f"status=success role={role}", user_id=user_id)
     token = create_token(user_id, role=role)
     row = get_user_by_id(user_id)
     response = JSONResponse(
@@ -135,34 +149,79 @@ def signup(
             "ui_preferences": get_ui_preferences(user_id=user_id),
         }
     )
-    response.set_cookie(key="session", value=token, httponly=True, samesite="lax", secure=False)
+    _set_session_cookie(response, token)
     return response
 
 
 @router.post("/logout")
 def logout(request: Request):
     if getattr(request.state, "user_id", None):
-        log_admin_event("user_logout", "Session API logout", user_id=request.state.user_id)
+        log_admin_event("user_logout", "status=success", user_id=request.state.user_id)
     response = JSONResponse({"status": "success"})
     response.delete_cookie("session")
     return response
 
 
+@router.post("/google")
+async def google_signin(request: Request):
+    data = await request.json()
+    email = (data.get("email") or "").strip().lower()
+    name = (data.get("name") or "").strip()
+    if not email or not name:
+        return JSONResponse(status_code=400, content={"status": "error", "error": "Email and name are required"})
+
+    conn = sqlite3.connect(DATABASE_PATHS["users"])
+    ensure_users_schema(conn)
+    cursor = conn.cursor()
+    cursor.execute("SELECT id, role, account_status FROM users WHERE email = ?", (email,))
+    user = cursor.fetchone()
+
+    if not user:
+        role = "admin" if count_users() == 0 else "user"
+        cursor.execute(
+            """
+            INSERT INTO users (full_name, email, password_hash, role, account_status)
+            VALUES (?, ?, ?, ?, 'active')
+            """,
+            (name, email, "google", role),
+        )
+        conn.commit()
+        cursor.execute("SELECT id, role, account_status FROM users WHERE email = ?", (email,))
+        user = cursor.fetchone()
+
+    conn.close()
+
+    user_id, role, account_status = user
+    role = (role or "user").strip().lower()
+    account_status = (account_status or "active").strip().lower()
+    if account_status != "active":
+        return JSONResponse(status_code=403, content={"status": "error", "error": "Account disabled. Contact admin."})
+
+    update_last_login(user_id)
+    log_admin_event("user_login", "status=success provider=google", user_id=user_id)
+    token = create_token(user_id, role=role)
+    response = JSONResponse({"status": "success"})
+    _set_session_cookie(response, token)
+    return response
+
+
 @router.post("/forgot-password")
 def forgot_password(email: str = Form(...)):
-    token = create_password_reset_token(email=email.strip().lower())
-    if token:
-        log_admin_event("password_reset_requested", f"Reset token generated for {email}: {token}")
+    normalized_email = email.strip().lower()
+    user = get_user_by_email(normalized_email)
+    token = create_password_reset_token(email=normalized_email) if user else None
+    _log_password_reset_request(user[0] if user else None, bool(token))
     return {"status": "success", "message": "If this email exists, a reset link has been generated."}
 
 
-@router.post("/reset-password/{token}")
-def reset_password(token: str, new_password: str = Form(...)):
+@router.post("/reset-password")
+def reset_password(token: str = Form(...), new_password: str = Form(...)):
     if len(new_password or "") < 6:
         return JSONResponse(status_code=400, content={"status": "error", "error": "Password must be at least 6 characters"})
     user_id = use_password_reset_token(token)
     if not user_id:
+        log_admin_event("password_reset_completed", "status=failure", level="warning")
         return JSONResponse(status_code=400, content={"status": "error", "error": "Invalid or expired token"})
     update_user_password_hash(user_id, hash_password(new_password))
-    log_admin_event("password_reset_completed", f"Reset completed for user {user_id}", user_id=user_id)
+    log_admin_event("password_reset_completed", "status=success", user_id=user_id)
     return {"status": "success"}
